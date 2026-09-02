@@ -3,6 +3,7 @@
     title: string;
     notes?: string;
     due?: string;
+    dueTime?: string;
     priority?: 1 | 2 | 3;
     tags: string[];
     listId?: string;
@@ -36,6 +37,7 @@
   let title = $state('');
   let notes = $state('');
   let due = $state('');
+  let dueTime = $state('');
   let priority = $state('');
   let tagsText = $state('');
   let listId = $state('');
@@ -47,6 +49,7 @@
       title = task.title;
       notes = task.notes ?? '';
       due = task.due ?? '';
+      dueTime = task.dueTime ?? '';
       priority = task.priority ? String(task.priority) : '';
       tagsText = task.tags.join(' ');
       listId = task.listId ?? '';
@@ -67,6 +70,7 @@
       title: title.trim(),
       notes: notes.trim() || undefined,
       due: due || undefined,
+      dueTime: dueTime || undefined,
       priority: priority ? (Number(priority) as 1 | 2 | 3) : undefined,
       tags: tagsText.split(/[\s,、，]+/).filter(Boolean),
       listId: listId || undefined,
@@ -91,6 +95,10 @@
       <label>
         {t('dueLabel')}
         <input type="date" bind:value={due} />
+      </label>
+      <label>
+        {t('dueTimeLabel')}
+        <input type="time" bind:value={dueTime} />
       </label>
       <label>
         {t('priorityLabel')}

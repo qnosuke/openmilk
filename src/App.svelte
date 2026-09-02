@@ -71,12 +71,37 @@
     const raw = params.get('add');
     if (!raw) return;
     window.history.replaceState(null, '', window.location.pathname);
+    // 自動化のリトライで同じ URL が開き直っても重複しないよう、
+    // 直近 10 分以内に処理した同じ1行は無視する
+    if (seenRecently(raw)) return;
     const parsed = parseTaskInput(raw);
     if (!parsed.title) return;
     await createTask({
       ...parsed,
       listId: selected === 'all' || selected === 'inbox' ? undefined : selected,
     });
+  }
+
+  const ADD_LOG_KEY = 'openmilk.addlog';
+  const ADD_LOG_WINDOW_MS = 10 * 60 * 1000;
+
+  /** ?add= の再実行（自動化リトライ）による重複登録を防ぐ */
+  function seenRecently(raw: string): boolean {
+    try {
+      const now = Date.now();
+      const log = (
+        JSON.parse(localStorage.getItem(ADD_LOG_KEY) ?? '[]') as { h: string; t: number }[]
+      ).filter((entry) => now - entry.t < ADD_LOG_WINDOW_MS);
+      if (log.some((entry) => entry.h === raw)) {
+        localStorage.setItem(ADD_LOG_KEY, JSON.stringify(log));
+        return true;
+      }
+      log.push({ h: raw, t: now });
+      localStorage.setItem(ADD_LOG_KEY, JSON.stringify(log.slice(-50)));
+    } catch {
+      // localStorage が使えない環境では重複チェックなしで進む
+    }
+    return false;
   }
 
   function flashDataStatus(message: string) {

@@ -12,7 +12,11 @@
   const preview = $derived.by(() => {
     if (!parsed?.title) return '';
     const parts: string[] = [];
-    if (parsed.due) parts.push(`${t('prevDue')}: ${formatDue(parsed.due, i18n.locale)}`);
+    if (parsed.due) {
+      parts.push(
+        `${t('prevDue')}: ${formatDue(parsed.due, i18n.locale)}${parsed.dueTime ? ` ${parsed.dueTime}` : ''}`,
+      );
+    }
     if (parsed.priority) parts.push(`${t('prevPriority')}: !${parsed.priority}`);
     if (parsed.estimateMinutes) {
       parts.push(`${t('prevEstimate')}: ${formatDuration(parsed.estimateMinutes, i18n.locale)}`);

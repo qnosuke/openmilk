@@ -47,7 +47,9 @@
       <span class="estimate">{formatDuration(task.estimateMinutes, i18n.locale)}</span>
     {/if}
     {#if task.due}
-      <span class="due" class:overdue>{formatDue(task.due, i18n.locale)}</span>
+      <span class="due" class:overdue>
+        {formatDue(task.due, i18n.locale)}{task.dueTime ? ` ${task.dueTime}` : ''}
+      </span>
     {/if}
     {#each task.tags as tag}<span class="tag">#{tag}</span>{/each}
     {#if listName}<span class="list-chip">{listName}</span>{/if}

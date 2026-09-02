@@ -8,8 +8,10 @@ export interface Task {
   id: string; // crypto.randomUUID()
   title: string;
   notes?: string;
-  /** 期限。ローカル日付 'YYYY-MM-DD'（時刻は将来拡張） */
+  /** 期限。ローカル日付 'YYYY-MM-DD' */
   due?: string;
+  /** 期限の時刻 'HH:mm'（24時間表記）。日付なしで時刻だけのタスクは due=今日 になる */
+  dueTime?: string;
   priority?: 1 | 2 | 3;
   tags: string[];
   /** 見積もり（分） */

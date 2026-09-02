@@ -4,6 +4,8 @@ export interface ParsedTask {
   title: string;
   /** 'YYYY-MM-DD' */
   due?: string;
+  /** 時刻 'HH:mm'（24時間表記）。日付なしで時刻だけあれば「今日」の予定になる */
+  dueTime?: string;
   priority?: 1 | 2 | 3;
   tags: string[];
   estimateMinutes?: number;
@@ -49,6 +51,41 @@ export function parseTaskInput(input: string, today: Date = new Date()): ParsedT
     priority = Number(p) as 1 | 2 | 3;
     return ' ';
   });
+
+  // 時刻（見積もりの「時間」「N分」と衝突するため、必ず見積もりより先に処理する）
+  let dueTime: string | undefined;
+  const setTime = (hour: number, minute: number) => {
+    dueTime = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  };
+  const to24Hour = (hour: number, meridiem: string) => {
+    if (/午後|下午|pm/i.test(meridiem)) return hour === 12 ? 12 : hour + 12;
+    if (/午前|上午|am/i.test(meridiem)) return hour === 12 ? 0 : hour;
+    return hour;
+  };
+
+  // 10時 / 10時半 / 10時30分 / 午後3時 / 下午3点（「1時間」を誤認しないよう 時の直後の間を除外）
+  rest = rest.replace(
+    /(?<!\d)(午前|午後|上午|下午)?\s*([01]?\d|2[0-3])[時点](?!間)(半|[0-5]?\d分)?(?![0-9])/g,
+    (_, meridiem: string, hour: string, minutes?: string) => {
+      const h = to24Hour(Number(hour), meridiem ?? '');
+      const m = minutes === '半' ? 30 : minutes ? Number(minutes.replace('分', '')) : 0;
+      setTime(h, m);
+      return ' ';
+    },
+  );
+  // 9:30
+  rest = rest.replace(/(?<!\d)([01]?\d|2[0-3]):([0-5]\d)(?!\d)/g, (_, h: string, m: string) => {
+    setTime(Number(h), Number(m));
+    return ' ';
+  });
+  // 2pm / 10:30am
+  rest = rest.replace(
+    /(?<!\d)([1-9]|1[0-2])(?::([0-5]\d))?\s*(am|pm)(?![a-z])/gi,
+    (_, hour: string, minutes: string | undefined, meridiem: string) => {
+      setTime(to24Hour(Number(hour), meridiem), minutes ? Number(minutes) : 0);
+      return ' ';
+    },
+  );
 
   // 見積もり
   let estimate: number | undefined;
@@ -111,7 +148,9 @@ export function parseTaskInput(input: string, today: Date = new Date()): ParsedT
 
   return {
     title: rest.replace(/\s+/g, ' ').trim(),
-    due,
+    // 時刻だけ入力された場合は「今日」の予定として扱う
+    due: due ?? (dueTime ? toISODate(today) : undefined),
+    dueTime,
     priority,
     tags,
     estimateMinutes: estimate,

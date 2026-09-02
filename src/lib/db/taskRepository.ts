@@ -5,6 +5,7 @@ export interface NewTask {
   title: string;
   notes?: string;
   due?: string;
+  dueTime?: string;
   priority?: 1 | 2 | 3;
   tags?: string[];
   estimateMinutes?: number;
@@ -22,6 +23,7 @@ export async function createTask(input: NewTask): Promise<Task> {
     title: input.title.trim(),
     notes: input.notes,
     due: input.due,
+    dueTime: input.dueTime,
     priority: input.priority,
     tags: input.tags ?? [],
     estimateMinutes: input.estimateMinutes,
@@ -121,7 +123,7 @@ export function observeLists(cb: (lists: List[]) => void): () => void {
 
 // --- バックアップ ---
 
-export const BACKUP_SCHEMA_VERSION = 2;
+export const BACKUP_SCHEMA_VERSION = 3;
 
 export interface BackupData {
   schemaVersion: number;

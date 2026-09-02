@@ -108,9 +108,60 @@ describe('parseTaskInput', () => {
     expect(parseTaskInput('リマインダー 2027-04-01', today).due).toBe('2027-04-01');
   });
 
+  it('明日10時（日付+時刻）', () => {
+    const parsed = parseTaskInput('明日10時 会議', today);
+    expect(parsed.due).toBe('2026-09-03');
+    expect(parsed.dueTime).toBe('10:00');
+    expect(parsed.title).toBe('会議');
+  });
+
+  it('午後3時は15:00、日付なしは今日', () => {
+    const parsed = parseTaskInput('午後3時 打合せ', today);
+    expect(parsed.due).toBe('2026-09-02');
+    expect(parsed.dueTime).toBe('15:00');
+  });
+
+  it('コロン表記 9:30', () => {
+    const parsed = parseTaskInput('会議 9:30', today);
+    expect(parsed.due).toBe('2026-09-02');
+    expect(parsed.dueTime).toBe('09:30');
+  });
+
+  it('2pm は14:00（tomorrow 併用）', () => {
+    const parsed = parseTaskInput('submit report tomorrow 2pm', today);
+    expect(parsed.due).toBe('2026-09-03');
+    expect(parsed.dueTime).toBe('14:00');
+    expect(parsed.title).toBe('submit report');
+  });
+
+  it('中国語: 明天上午10点', () => {
+    const parsed = parseTaskInput('明天上午10点 开会', today);
+    expect(parsed.due).toBe('2026-09-03');
+    expect(parsed.dueTime).toBe('10:00');
+  });
+
+  it('1時間30分は時刻と誤認しない', () => {
+    const parsed = parseTaskInput('1時間30分の資料作成', today);
+    expect(parsed.dueTime).toBeUndefined();
+    expect(parsed.estimateMinutes).toBe(90);
+  });
+
+  it('日付+時刻の併用（10時半）', () => {
+    const parsed = parseTaskInput('歯医者 3月10日 10時半', today);
+    expect(parsed.due).toBe('2027-03-10');
+    expect(parsed.dueTime).toBe('10:30');
+  });
+
+  it('時刻のみの入力（朝9時）は今日の予定になる', () => {
+    const parsed = parseTaskInput('レポート 朝9時', today);
+    expect(parsed.due).toBe('2026-09-02');
+    expect(parsed.dueTime).toBe('09:00');
+    expect(parsed.title).toBe('レポート 朝');
+  });
+
   it('解析できない語はタイトルに残す', () => {
-    const parsed = parseTaskInput('資料レビュー 朝9時', today);
-    expect(parsed.title).toBe('資料レビュー 朝9時');
+    const parsed = parseTaskInput('資料レビュー よろしくお願いします', today);
+    expect(parsed.title).toBe('資料レビュー よろしくお願いします');
     expect(parsed.due).toBeUndefined();
   });
 

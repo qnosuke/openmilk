@@ -27,7 +27,14 @@ export function compareTasks(a: Task, b: Task, mode: SortMode): number {
       if (ap !== bp) return ap - bp;
     }
     if (!!a.due !== !!b.due) return a.due ? -1 : 1;
-    if (a.due && b.due && a.due !== b.due) return a.due < b.due ? -1 : 1;
+    if (a.due && b.due) {
+      if (a.due !== b.due) return a.due < b.due ? -1 : 1;
+      // 同じ日付なら時刻つき（その日の予定）を先に、時刻は早い順。
+      // 時刻なしは '99' 扱いなので同日の最後に回る
+      const at = a.dueTime ?? '99';
+      const bt = b.dueTime ?? '99';
+      if (at !== bt) return at < bt ? -1 : 1;
+    }
     const ap = a.priority ?? 9;
     const bp = b.priority ?? 9;
     if (ap !== bp) return ap - bp;

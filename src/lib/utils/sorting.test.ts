@@ -40,6 +40,17 @@ describe('sortTasks', () => {
     ]);
   });
 
+  it('同じ期限なら時刻つきが先、時刻は早い順', () => {
+    const dateOnly = task({ id: 'dateOnly', due: '2026-09-03' });
+    const at10 = task({ id: 'at10', due: '2026-09-03', dueTime: '10:00' });
+    const at9 = task({ id: 'at9', due: '2026-09-03', dueTime: '09:00' });
+    expect(sortTasks([dateOnly, at10, at9], 'due').map((t) => t.id)).toEqual([
+      'at9',
+      'at10',
+      'dateOnly',
+    ]);
+  });
+
   it('追加順: 新しいものが先（完了は最後）', () => {
     const older = task({ id: 'older', createdAt: '2026-08-31T00:00:00.000Z' });
     const newer = task({ id: 'newer', createdAt: '2026-09-01T12:00:00.000Z' });

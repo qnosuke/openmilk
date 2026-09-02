@@ -114,7 +114,7 @@
   <!-- 書き出し・読み込み・言語は常用しないため折りたたみに格納（牛乳を注ぐ女をクリックで開閉） -->
   <details class="settings">
     <summary aria-label={t('settings')} title={t('settings')}>
-      <img class="milk-icon" src="/milk.png" alt={t('settings')} />
+      <img class="milk-icon" src="/milk-pixel.png" alt={t('settings')} />
     </summary>
     <div class="settings-body">
       <div class="data-actions">

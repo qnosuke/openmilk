@@ -96,9 +96,46 @@ export async function createList(name: string): Promise<List> {
   return list;
 }
 
-/** リストを削除する。タスクは失わない（INBOX へ戻す） */
+/** GTD の固定リスト。同名のリストがあれば固定化して再利用する */
+export const FIXED_LIST_NAMES = ['next action', 'waiting', 'someday'] as const;
+const FIXED_LIST_ORDER: Record<string, number> = {
+  'next action': -3,
+  waiting: -2,
+  someday: -1,
+};
+
+/** 起動時に一度呼び、固定リストが揃っていることを保証する（冪等） */
+export async function ensureFixedLists(): Promise<void> {
+  await db.transaction('rw', db.lists, async () => {
+    const all = await db.lists.toArray();
+    for (const name of FIXED_LIST_NAMES) {
+      const existing = all.find((l) => l.name.toLowerCase() === name && !l.deleted);
+      const targetOrder = FIXED_LIST_ORDER[name];
+      if (existing) {
+        if (existing.fixed !== 1 || existing.order !== targetOrder) {
+          await db.lists.put({ ...existing, fixed: 1, order: targetOrder, updatedAt: nowISO() });
+        }
+      } else {
+        const now = nowISO();
+        await db.lists.add({
+          id: crypto.randomUUID(),
+          name,
+          order: targetOrder,
+          createdAt: now,
+          updatedAt: now,
+          deleted: 0,
+          fixed: 1,
+        });
+      }
+    }
+  });
+}
+
+/** リストを削除する。タスクは失わない（INBOX へ戻す）。固定リストは削除できない */
 export async function deleteList(id: string): Promise<void> {
   await db.transaction('rw', db.lists, db.tasks, async () => {
+    const list = await db.lists.get(id);
+    if (list?.fixed) return;
     const now = nowISO();
     const tasks = await db.tasks.where('listId').equals(id).toArray();
     for (const task of tasks) {

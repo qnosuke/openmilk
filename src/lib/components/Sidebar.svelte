@@ -82,12 +82,14 @@
           <span class="nav-label">{list.name}</span>
           <span class="count">{counts[list.id] ?? 0}</span>
         </button>
-        <button
-          class="nav-delete"
-          aria-label={t('ariaDeleteList', { name: list.name })}
-          title={t('deleteListHint')}
-          onclick={() => ondelete(list.id)}>×</button
-        >
+        {#if !list.fixed}
+          <button
+            class="nav-delete"
+            aria-label={t('ariaDeleteList', { name: list.name })}
+            title={t('deleteListHint')}
+            onclick={() => ondelete(list.id)}>×</button
+          >
+        {/if}
       </div>
     {/each}
   </nav>

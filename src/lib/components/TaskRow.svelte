@@ -7,21 +7,28 @@
     task,
     listName,
     activeTag,
+    selectMode,
+    selected,
     ontoggle,
     ondelete,
     onedit,
     ontag,
+    onselect,
   }: {
     task: Task;
     /** 「すべて」表示時に所属リスト名を出す（INBOX タスクでは undefined） */
     listName?: string;
     /** タグ絞り込み中のタグ（一致するチップを強調） */
     activeTag?: string | null;
+    /** 一括完了モード中はチェックボックスが「選択」として働く */
+    selectMode?: boolean;
+    selected?: boolean;
     ontoggle: (id: string, completed: boolean) => void;
     ondelete: (id: string) => void;
     onedit: (id: string) => void;
     /** タグチップをクリック → そのタグで絞り込む（もう一度で解除） */
     ontag: (tag: string) => void;
+    onselect: (id: string, selected: boolean) => void;
   } = $props();
 
   const overdue = $derived(
@@ -32,13 +39,18 @@
 <li class="row" class:done={task.completedAt !== undefined}>
   <input
     type="checkbox"
-    checked={task.completedAt !== undefined}
+    checked={selectMode ? !!selected : task.completedAt !== undefined}
     aria-label={
-      task.completedAt !== undefined
-        ? t('ariaReopen', { title: task.title })
-        : t('ariaComplete', { title: task.title })
+      selectMode
+        ? selected
+          ? t('ariaUnselectTask', { title: task.title })
+          : t('ariaSelectTask', { title: task.title })
+        : task.completedAt !== undefined
+          ? t('ariaReopen', { title: task.title })
+          : t('ariaComplete', { title: task.title })
     }
-    onchange={(e) => ontoggle(task.id, e.currentTarget.checked)}
+    onchange={(e) =>
+      selectMode ? onselect(task.id, e.currentTarget.checked) : ontoggle(task.id, e.currentTarget.checked)}
   />
   <button
     class="link-title"

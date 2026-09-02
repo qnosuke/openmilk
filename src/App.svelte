@@ -9,6 +9,7 @@
   import {
     createTask,
     deleteList,
+    ensureFixedLists,
     exportAll,
     importBackup,
     observeLists,
@@ -33,6 +34,8 @@
   let dueFilter = $state<'overdue' | 'today' | 'tomorrow' | 'week' | null>(null);
   let tagFilter = $state<string | null>(null);
   let searchQuery = $state('');
+  let selectMode = $state(false);
+  let selectedIds = $state<string[]>([]);
 
   function loadSortMode(): SortMode {
     try {
@@ -61,6 +64,7 @@
       lists = list;
     });
     void handleAddParam();
+    void ensureFixedLists();
     return () => {
       unsubscribeTasks();
       unsubscribeLists();
@@ -241,6 +245,25 @@
     });
   }
 
+  const allVisibleSelected = $derived(
+    visibleTasks.length > 0 && visibleTasks.every((t) => selectedIds.includes(t.id)),
+  );
+
+  function toggleSelectAll(checked: boolean) {
+    selectedIds = checked ? visibleTasks.map((t) => t.id) : [];
+  }
+
+  function exitSelectMode() {
+    selectMode = false;
+    selectedIds = [];
+  }
+
+  async function completeSelected() {
+    const ids = [...selectedIds];
+    await Promise.all(ids.map((id) => setCompleted(id, true)));
+    selectedIds = [];
+  }
+
   async function removeList(id: string) {
     await deleteList(id);
     // 表示中のリストを消した場合は INBOX へ戻る
@@ -288,6 +311,16 @@
           #{tagFilter} ✕
         </button>
       {/if}
+      <button
+        class="select-toggle"
+        class:on={selectMode}
+        onclick={() => {
+          selectMode = !selectMode;
+          selectedIds = [];
+        }}
+      >
+        {t('selectTasks')}
+      </button>
       <label class="sort">
         <span>{t('sortLabel')}</span>
         <select bind:value={sortMode} aria-label={t('sortLabel')}>
@@ -299,6 +332,23 @@
     </header>
 
     <QuickAdd onadd={addTask} />
+
+    {#if selectMode}
+      <div class="bulk-bar">
+        <label class="bulk-select-all">
+          <input
+            type="checkbox"
+            checked={allVisibleSelected}
+            onchange={(e) => toggleSelectAll(e.currentTarget.checked)}
+          />
+          {t('selectAll')}
+        </label>
+        <button class="bulk-complete" disabled={selectedIds.length === 0} onclick={completeSelected}>
+          {t('completeN', { n: selectedIds.length })}
+        </button>
+        <button class="bulk-cancel" onclick={exitSelectMode}>{t('cancel')}</button>
+      </div>
+    {/if}
 
     {#if !loaded}
       <p class="empty">{t('loading')}</p>
@@ -314,10 +364,16 @@
           {task}
           listName={lists.find((l) => l.id === task.listId)?.name}
           activeTag={tagFilter}
+          selectMode={selectMode}
+          selected={selectedIds.includes(task.id)}
           ontoggle={(id, completed) => setCompleted(id, completed)}
           ondelete={softDeleteTask}
           onedit={(id) => (editingId = id)}
           ontag={(tag) => (tagFilter = tagFilter === tag ? null : tag)}
+          onselect={(id, checked) =>
+            (selectedIds = checked
+              ? [...selectedIds, id]
+              : selectedIds.filter((sid) => sid !== id))}
         />
         {/each}
       </ul>

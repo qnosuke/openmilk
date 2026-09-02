@@ -31,8 +31,10 @@ export interface Task {
 export interface List {
   id: string; // crypto.randomUUID()
   name: string;
-  /** 表示順（作成順） */
+  /** 表示順（作成順）。固定リストは負の値で先頭に来る */
   order: number;
+  /** GTD の固定リスト（next action / waiting / someday）は削除不可 */
+  fixed?: 0 | 1;
   createdAt: string;
   updatedAt: string;
   deleted: 0 | 1;

@@ -98,8 +98,12 @@ export function parseTaskInput(input: string, today: Date = new Date()): ParsedT
   takeEstimate(/(?<!\d)(\d+(?:\.\d+)?)\s*(時間半|時間|个?小时)(?![一-龥])/gi, (n, unit) =>
     Math.round(Number(n) * 60) + (unit === '時間半' ? 30 : 0),
   );
-  takeEstimate(/(?<!\d)(\d+(?:\.\d+)?)\s*h(?![a-z0-9])/gi, (n) => Math.round(Number(n) * 60));
-  takeEstimate(/(?<!\d)(\d+)\s*(分钟|min(?:ute)?s?|分(?![一-龥]))(?![a-z])/gi, (n) => Number(n));
+  // 1h30min のように数字が続いても h を拾えるようにする
+  takeEstimate(/(?<!\d)(\d+(?:\.\d+)?)\s*h(?![a-z])/gi, (n) => Math.round(Number(n) * 60));
+  takeEstimate(
+    /(?<!\d)(\d+)\s*(分钟|min(?:ute)?s?|m(?![a-z])|分(?![一-龥]))(?![a-z])/gi,
+    (n) => Number(n),
+  );
   if (estimate === 0) estimate = undefined;
 
   // 期限（先に見つかったものが採用され、その語だけ取り除く）
@@ -186,9 +190,14 @@ export function parseEstimateMinutes(text: string): number | undefined {
       total = (total ?? 0) + Math.round(Number(n) * 60) + (unit === '時間半' ? 30 : 0);
       return ' ';
     });
-  rest = rest.replace(/(?<!\d)(\d+(?:\.\d+)?)\s*h(?![a-z0-9])/gi,
+  rest = rest.replace(/(?<!\d)(\d+(?:\.\d+)?)\s*h(?![a-z])/gi,
     (_, n: string) => {
       total = (total ?? 0) + Math.round(Number(n) * 60);
+      return ' ';
+    });
+  rest = rest.replace(/(?<!\d)(\d+)\s*(分钟|min(?:ute)?s?|m(?![a-z])|分(?![一-龥]))(?![a-z])/gi,
+    (_, n: string) => {
+      total = (total ?? 0) + Number(n);
       return ' ';
     });
   rest = rest.replace(/(?<!\d)(\d+)\s*(分钟|min(?:ute)?s?|分(?![一-龥]))(?![a-z])/gi,

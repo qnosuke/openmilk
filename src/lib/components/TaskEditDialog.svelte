@@ -98,7 +98,8 @@
       </label>
       <label>
         {t('dueTimeLabel')}
-        <input type="time" bind:value={dueTime} />
+        <!-- 10 分刻みのピッカー（細かい値はキーボード入力で可） -->
+        <input type="time" step="600" bind:value={dueTime} />
       </label>
       <label>
         {t('priorityLabel')}

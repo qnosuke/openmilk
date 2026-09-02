@@ -52,6 +52,14 @@ describe('parseTaskInput', () => {
     expect(parseTaskInput('read paper 0.5h', today).estimateMinutes).toBe(30);
   });
 
+  it('英語の見積もり: 1h30min は時間と分の合算', () => {
+    expect(parseTaskInput('write spec 1h30min', today).estimateMinutes).toBe(90);
+    expect(parseTaskInput('_cleanup 2h15min', today).estimateMinutes).toBe(135);
+    expect(parseTaskInput('workout 1h30m', today).estimateMinutes).toBe(90);
+    expect(parseTaskInput('jog 30m', today).estimateMinutes).toBe(30);
+    expect(parseTaskInput('write spec 1h30min', today).title).toBe('write spec');
+  });
+
   it('見積もりの合算（1時間30分）', () => {
     expect(parseTaskInput('資料作成 1時間30分 !2 #work', today)).toEqual({
       title: '資料作成',

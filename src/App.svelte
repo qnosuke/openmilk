@@ -10,6 +10,8 @@
     createList,
     createTask,
     deleteList,
+    exportAll,
+    importBackup,
     observeLists,
     observeVisibleTasks,
     setCompleted,
@@ -17,7 +19,7 @@
     updateTask,
   } from './lib/db/taskRepository';
   import { formatDuration, formatTodayLong, todayISO } from './lib/utils/date';
-  import type { ParsedTask } from './lib/utils/parseTask';
+  import { parseTaskInput, type ParsedTask } from './lib/utils/parseTask';
   import { sortTasks, type SortMode } from './lib/utils/sorting';
 
   const SORT_KEY = 'openmilk.sort';
@@ -28,6 +30,7 @@
   let selected = $state('inbox');
   let editingId = $state<string | null>(null);
   let sortMode = $state<SortMode>(loadSortMode());
+  let dataStatus = $state('');
 
   function loadSortMode(): SortMode {
     try {
@@ -55,11 +58,55 @@
     const unsubscribeLists = observeLists((list) => {
       lists = list;
     });
+    void handleAddParam();
     return () => {
       unsubscribeTasks();
       unsubscribeLists();
     };
   });
+
+  /** エージェント向け入口: /?add=<クイック追加1行> でタスク登録して URL を掃除する */
+  async function handleAddParam() {
+    const params = new URLSearchParams(window.location.search);
+    const raw = params.get('add');
+    if (!raw) return;
+    window.history.replaceState(null, '', window.location.pathname);
+    const parsed = parseTaskInput(raw);
+    if (!parsed.title) return;
+    await createTask({
+      ...parsed,
+      listId: selected === 'all' || selected === 'inbox' ? undefined : selected,
+    });
+  }
+
+  function flashDataStatus(message: string) {
+    dataStatus = message;
+    window.setTimeout(() => {
+      dataStatus = '';
+    }, 4000);
+  }
+
+  async function exportData() {
+    const data = await exportAll();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `openmilk-backup-${todayISO()}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    flashDataStatus(t('dataExported'));
+  }
+
+  async function importData(file: File) {
+    try {
+      const data = JSON.parse(await file.text());
+      const count = await importBackup(data);
+      flashDataStatus(t('importDone', { n: count }));
+    } catch {
+      flashDataStatus(t('importInvalid'));
+    }
+  }
 
   const editingTask = $derived(editingId ? (tasks.find((t) => t.id === editingId) ?? null) : null);
 
@@ -143,9 +190,12 @@
     {lists}
     selected={selected}
     {counts}
+    {dataStatus}
     onselect={(id) => (selected = id)}
     oncreate={addList}
     ondelete={removeList}
+    onexport={exportData}
+    onimportFile={importData}
   />
 
   <main>

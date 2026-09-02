@@ -186,6 +186,35 @@ main {
   cursor: default;
 }
 
+.data-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.data-actions button {
+  flex: 1;
+  padding: 6px 0;
+  font-size: 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.data-actions button:hover {
+  background: rgb(0 0 0 / 3%);
+}
+
+.data-actions input[type='file'] {
+  display: none;
+}
+
+.data-status {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
 .lang {
   display: flex;
   flex-direction: column;

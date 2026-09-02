@@ -6,19 +6,26 @@
     lists,
     selected,
     counts,
+    dataStatus,
     onselect,
     oncreate,
     ondelete,
+    onexport,
+    onimportFile,
   }: {
     lists: List[];
     selected: string;
     counts: Record<string, number>;
+    dataStatus: string;
     onselect: (id: string) => void;
     oncreate: (name: string) => void;
     ondelete: (id: string) => void;
+    onexport: () => void;
+    onimportFile: (file: File) => void;
   } = $props();
 
   let name = $state('');
+  let fileInput = $state<HTMLInputElement>();
 
   function submit(event?: SubmitEvent) {
     event?.preventDefault();
@@ -76,6 +83,24 @@
     />
     <button type="submit" disabled={!name.trim()}>{t('create')}</button>
   </form>
+
+  <div class="data-actions">
+    <button type="button" onclick={onexport}>{t('exportLabel')}</button>
+    <button type="button" onclick={() => fileInput?.click()}>{t('importLabel')}</button>
+    <input
+      type="file"
+      accept="application/json,.json"
+      bind:this={fileInput}
+      onchange={(e) => {
+        const file = e.currentTarget.files?.[0];
+        if (file) onimportFile(file);
+        e.currentTarget.value = '';
+      }}
+    />
+  </div>
+  {#if dataStatus}
+    <p class="data-status" role="status">{dataStatus}</p>
+  {/if}
 
   <label class="lang">
     <span>{t('language')}</span>

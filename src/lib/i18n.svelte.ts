@@ -56,6 +56,11 @@ const dicts: Record<Locale, Dict> = {
     ariaEdit: '「{title}」の詳細を編集',
     ariaDeleteList: 'リスト「{name}」を削除',
     deleteListHint: 'リストを削除（タスクは INBOX に戻ります）',
+    exportLabel: '書き出し',
+    importLabel: '読み込み',
+    dataExported: '書き出しました',
+    importDone: '{n} 件を取り込みました',
+    importInvalid: 'JSON を読み取れませんでした',
   },
   en: {
     allLists: 'All',
@@ -103,6 +108,11 @@ const dicts: Record<Locale, Dict> = {
     ariaEdit: 'Edit "{title}"',
     ariaDeleteList: 'Delete list "{name}"',
     deleteListHint: 'Delete list (tasks move back to INBOX)',
+    exportLabel: 'Export',
+    importLabel: 'Import',
+    dataExported: 'Exported',
+    importDone: 'Imported {n} tasks',
+    importInvalid: 'Could not read that file',
   },
   zh: {
     allLists: '全部',
@@ -150,6 +160,11 @@ const dicts: Record<Locale, Dict> = {
     ariaEdit: '编辑「{title}」的详细内容',
     ariaDeleteList: '删除列表「{name}」',
     deleteListHint: '删除列表（任务将回到 INBOX）',
+    exportLabel: '导出',
+    importLabel: '导入',
+    dataExported: '已导出',
+    importDone: '已导入 {n} 条任务',
+    importInvalid: '无法读取该文件',
   },
 };
 

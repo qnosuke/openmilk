@@ -36,8 +36,16 @@ UI は日本語 / English / 中文の 3 言語（`src/lib/i18n.svelte.ts` の辞
 5. UI は自動化しやすく保つ: 正しい HTML 要素、アイコンボタンに `aria-label`、
    キーボードだけで主要操作が完結すること
 
-## 将来のエージェント連携（未実装）
+## エージェント連携
 
-`DEVELOPMENT_FLOW.md` Phase 6.5 参照。監視フォルダの `inbox.md` 取り込み、
-`openmilk.schema.json` によるデータ形式の公開、`?add=` クイック追加 URL を計画中。
-実装の際はこのファイルも更新すること。
+このアプリは「エージェント（OpenClaw など）が整理し、人間はビューワー/微調整担当」
+という使い方を想定して設計する。
+
+- 実装済み:
+  - `?add=<クイック追加1行>` URL でブラウザを1回開くだけでタスク登録（`App.svelte` の handleAddParam）
+  - 「書き出し/読み込み」ボタンによる JSON バックアップ（`taskRepository` の
+    `exportAll` / `importBackup`。同一 id は updatedAt 新しい方を採用の冪等マージ）
+  - OpenClaw 用スキル: `skills/openmilk/SKILL.md`（OpenClaw の skills ディレクトリに
+    コピーして使う。機能を変えたらこの SKILL.md も更新する）
+- 未実装（計画）: 監視フォルダの `inbox.md` 取り込み、`openmilk.schema.json` の公開
+  （DEVELOPMENT_FLOW.md Phase 6.5 参照）。実装の際はこのファイルと SKILL.md も更新すること

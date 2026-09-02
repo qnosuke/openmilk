@@ -118,3 +118,46 @@ export function observeLists(cb: (lists: List[]) => void): () => void {
   });
   return () => subscription.unsubscribe();
 }
+
+// --- バックアップ ---
+
+export const BACKUP_SCHEMA_VERSION = 2;
+
+export interface BackupData {
+  schemaVersion: number;
+  exportedAt: string;
+  /** 論理削除済みも含む全データ */
+  tasks: Task[];
+  lists: List[];
+}
+
+export async function exportAll(): Promise<BackupData> {
+  const [tasks, lists] = await Promise.all([db.tasks.toArray(), db.lists.toArray()]);
+  return { schemaVersion: BACKUP_SCHEMA_VERSION, exportedAt: nowISO(), tasks, lists };
+}
+
+/**
+ * バックアップを取り込む（冪等マージ）。
+ * 同じ id のレコードは updatedAt が新しい方を採用するので、
+ * 空からの復元でも既存データとの統合でも同じ関数で動く。
+ * 戻り値は取り込んだタスク数。
+ */
+export async function importBackup(data: BackupData): Promise<number> {
+  let imported = 0;
+  await db.transaction('rw', db.tasks, db.lists, async () => {
+    for (const task of data.tasks ?? []) {
+      if (!task?.id || typeof task.title !== 'string') continue;
+      const existing = await db.tasks.get(task.id);
+      if (existing && existing.updatedAt >= (task.updatedAt ?? '')) continue;
+      await db.tasks.put(task);
+      imported += 1;
+    }
+    for (const list of data.lists ?? []) {
+      if (!list?.id || typeof list.name !== 'string') continue;
+      const existing = await db.lists.get(list.id);
+      if (existing && existing.updatedAt >= (list.updatedAt ?? '')) continue;
+      await db.lists.put(list);
+    }
+  });
+  return imported;
+}

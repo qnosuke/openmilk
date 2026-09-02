@@ -34,6 +34,18 @@
 
   let name = $state('');
   let fileInput = $state<HTMLInputElement>();
+  let detailsEl = $state<HTMLDetailsElement>();
+
+  // ウィンドウの外をクリックしたら設定を閉じる
+  $effect(() => {
+    function onDocClick(event: MouseEvent) {
+      if (detailsEl?.open && !detailsEl.contains(event.target as Node)) {
+        detailsEl.open = false;
+      }
+    }
+    document.addEventListener('click', onDocClick);
+    return () => document.removeEventListener('click', onDocClick);
+  });
 
   function submit(event?: SubmitEvent) {
     event?.preventDefault();
@@ -111,8 +123,9 @@
     <button type="submit" disabled={!name.trim()}>{t('create')}</button>
   </form>
 
-  <!-- 書き出し・読み込み・言語は常用しないため折りたたみに格納（牛乳を注ぐ女をクリックで開閉） -->
-  <details class="settings">
+  <!-- 書き出し・読み込み・言語は常用しないため折りたたみに格納。
+       ドット絵アイコンをクリックすると右にピクセル風ウィンドウが出る -->
+  <details class="settings" bind:this={detailsEl}>
     <summary aria-label={t('settings')} title={t('settings')}>
       <img class="milk-icon" src="/milk-pixel.png" alt={t('settings')} />
     </summary>

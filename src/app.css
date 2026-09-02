@@ -204,12 +204,12 @@ main {
 }
 
 .settings summary {
-  width: 30px;
-  height: 30px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
   list-style: none;
 }
@@ -219,7 +219,16 @@ main {
 }
 
 .settings summary:hover {
-  background: rgb(0 0 0 / 5%);
+  background: rgb(0 0 0 / 6%);
+}
+
+.milk-icon {
+  width: 38px;
+  height: 38px;
+  /* ドット絵の輪郭をにじませない */
+  image-rendering: pixelated;
+  border-radius: 9px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 20%);
 }
 
 .settings-body {

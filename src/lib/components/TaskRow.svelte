@@ -52,6 +52,9 @@
     {#if task.estimateMinutes}
       <span class="estimate">{formatDuration(task.estimateMinutes, i18n.locale)}</span>
     {/if}
+    {#if task.notes}
+      <span class="note-chip" title={task.notes} aria-hidden="true">📝</span>
+    {/if}
     {#if task.due}
       <span class="due" class:overdue>
         {formatDue(task.due, i18n.locale)}{task.dueTime ? ` ${task.dueTime}` : ''}

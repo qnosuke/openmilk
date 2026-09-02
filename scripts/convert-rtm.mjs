@@ -4,6 +4,8 @@
 //   TZ=Asia/Tokyo node scripts/convert-rtm.mjs <rtm-export.json> [output.json] [--incomplete-only]
 //
 // - 未完了/完了両方のタスクを取り込む（--incomplete-only で完了を除外）
+// - メモはトップレベル notes 配列にあり、series_id でタスクに紐づけて合成する
+// - repeat（RRULE）は recurrence に保存、ゴミ箱タスクは deleted: 1
 // - RTM の「Inbox」「Sent」は openmilk の INBOX（listId なし）に合流
 // - アーカイブ済みリストも通常リストとして取り込む
 // - スマートリスト（保存済み検索）は変換できないためスキップ
@@ -65,6 +67,22 @@ function toTime(ms) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
+// --- メモ: トップレベル notes を series_id でタスクに紐づける ---
+const notesBySeries = new Map();
+for (const n of rtm.notes ?? []) {
+  if (!notesBySeries.has(n.series_id)) notesBySeries.set(n.series_id, []);
+  notesBySeries.get(n.series_id).push(n);
+}
+function notesFor(task) {
+  const notes = (notesBySeries.get(task.series_id) ?? [])
+    .slice()
+    .sort((a, b) => (a.date_created ?? 0) - (b.date_created ?? 0));
+  return notes
+    .map((n) => (n.title ? `【${n.title}】\n${n.content}` : n.content))
+    .filter((c) => c && String(c).trim())
+    .join('\n---\n');
+}
+
 // --- タスク ---
 const tasks = [];
 let skipped = 0;
@@ -84,7 +102,7 @@ for (const t of rtm.tasks ?? []) {
     tags: Array.isArray(t.tags) ? t.tags : [],
     createdAt: new Date(t.date_created ?? Date.now()).toISOString(),
     updatedAt: new Date(t.date_modified ?? t.date_created ?? Date.now()).toISOString(),
-    deleted: 0,
+    deleted: t.date_trashed ? 1 : 0,
   };
   if (t.date_completed) task.completedAt = new Date(t.date_completed).toISOString();
 
@@ -102,10 +120,11 @@ for (const t of rtm.tasks ?? []) {
   const listId = listIdMap.get(t.list_id);
   if (listId) task.listId = listId;
 
-  if (typeof t.repeat_every === 'string' && t.repeat_every) task.recurrence = t.repeat_every;
+  const recurrence = typeof t.repeat === 'string' && t.repeat ? t.repeat : undefined;
+  if (recurrence) task.recurrence = recurrence;
 
-  const notes = Array.isArray(t.notes) ? t.notes.join('\n') : t.notes;
-  if (notes) task.notes = notes;
+  const noteText = notesFor(t);
+  if (noteText) task.notes = noteText;
   else if (t.url) task.notes = t.url;
 
   tasks.push(task);
@@ -128,6 +147,9 @@ const stats = {
   incomplete: tasks.length - completed,
   lists: lists.length,
   skipped: skipped,
+  trashed: tasks.filter((t) => t.deleted).length,
+  withNotes: tasks.filter((t) => t.notes).length,
+  withRecurrence: tasks.filter((t) => t.recurrence).length,
   withDue: tasks.filter((t) => t.due).length,
   withDueTime: tasks.filter((t) => t.dueTime).length,
   withEstimate: tasks.filter((t) => t.estimateMinutes).length,

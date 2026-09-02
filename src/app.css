@@ -520,6 +520,11 @@ h1 {
   border-radius: 999px;
 }
 
+.note-chip {
+  font-size: 11px;
+  cursor: help;
+}
+
 .prio {
   font-size: 12px;
   font-weight: 700;

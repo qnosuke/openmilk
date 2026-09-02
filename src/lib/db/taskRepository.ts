@@ -140,8 +140,8 @@ export async function exportAll(): Promise<BackupData> {
 
 /**
  * バックアップを取り込む（冪等マージ）。
- * 同じ id のレコードは updatedAt が新しい方を採用するので、
- * 空からの復元でも既存データとの統合でも同じ関数で動く。
+ * 同じ id のレコードは updatedAt が新しい方を採用し、同時刻なら
+ * 取り込み側を優先する（変換ツールでフィールドを増やした再取り込みが反映される）。
  * 戻り値は取り込んだタスク数。
  */
 export async function importBackup(data: BackupData): Promise<number> {
@@ -150,14 +150,14 @@ export async function importBackup(data: BackupData): Promise<number> {
     for (const task of data.tasks ?? []) {
       if (!task?.id || typeof task.title !== 'string') continue;
       const existing = await db.tasks.get(task.id);
-      if (existing && existing.updatedAt >= (task.updatedAt ?? '')) continue;
+      if (existing && existing.updatedAt > (task.updatedAt ?? '')) continue;
       await db.tasks.put(task);
       imported += 1;
     }
     for (const list of data.lists ?? []) {
       if (!list?.id || typeof list.name !== 'string') continue;
       const existing = await db.lists.get(list.id);
-      if (existing && existing.updatedAt >= (list.updatedAt ?? '')) continue;
+      if (existing && existing.updatedAt > (list.updatedAt ?? '')) continue;
       await db.lists.put(list);
     }
   });

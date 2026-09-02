@@ -7,7 +7,6 @@
   import { i18n, t } from './lib/i18n.svelte';
   import type { List, Task } from './lib/db/schema';
   import {
-    createList,
     createTask,
     deleteList,
     exportAll,
@@ -33,6 +32,7 @@
   let dataStatus = $state('');
   let dueFilter = $state<'overdue' | 'today' | 'tomorrow' | 'week' | null>(null);
   let tagFilter = $state<string | null>(null);
+  let searchQuery = $state('');
 
   function loadSortMode(): SortMode {
     try {
@@ -147,11 +147,16 @@
     const t0 = todayISO();
     const tomorrow = addDays(t0, 1);
     const weekEnd = addDays(t0, 7);
+    const q = searchQuery.trim().toLowerCase();
     const filtered = tasks.filter((task) => {
       const inSelectedList =
         selected === 'all' || (selected === 'inbox' ? !task.listId : task.listId === selected);
       if (!inSelectedList) return false;
       if (tagFilter !== null && !task.tags.includes(tagFilter)) return false;
+      if (q) {
+        const haystack = `${task.title}\n${task.notes ?? ''}\n${task.tags.join(' ')}`.toLowerCase();
+        if (!haystack.includes(q)) return false;
+      }
       if (dueFilter === null) return true;
       if (!task.due) return false;
       // 期限切れは独立ボタン。今日=当日のみ
@@ -236,12 +241,6 @@
     });
   }
 
-  async function addList(name: string) {
-    const list = await createList(name);
-    // 作成したリストに切り替える（そのままタスクを追加できるように）
-    selected = list.id;
-  }
-
   async function removeList(id: string) {
     await deleteList(id);
     // 表示中のリストを消した場合は INBOX へ戻る
@@ -263,12 +262,13 @@
     {tagCounts}
     activeTag={tagFilter}
     {dueFilter}
+    search={searchQuery}
     {dataStatus}
     onselect={(id) => (selected = id)}
-    oncreate={addList}
     ondelete={removeList}
     onexport={exportData}
     onimportFile={importData}
+    onsearch={(query) => (searchQuery = query)}
     onsetDueFilter={(filter) => (dueFilter = filter)}
     onselectTag={(tag) => (tagFilter = tagFilter === tag ? null : tag)}
   />

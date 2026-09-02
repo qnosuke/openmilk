@@ -11,8 +11,9 @@
     activeTag,
     dueFilter,
     dataStatus,
+    search,
+    onsearch,
     onselect,
-    oncreate,
     ondelete,
     onexport,
     onimportFile,
@@ -29,18 +30,18 @@
     activeTag: string | null;
     dueFilter: 'overdue' | 'today' | 'tomorrow' | 'week' | null;
     dataStatus: string;
+    search: string;
     onselect: (id: string) => void;
-    oncreate: (name: string) => void;
     ondelete: (id: string) => void;
     onexport: () => void;
     onimportFile: (file: File) => void;
+    onsearch: (query: string) => void;
     /** 同じボタンを押すと解除される（null が渡る） */
     onsetDueFilter: (filter: 'overdue' | 'today' | 'tomorrow' | 'week' | null) => void;
     /** タグクリックで絞り込みトグル */
     onselectTag: (tag: string) => void;
   } = $props();
 
-  let name = $state('');
   let fileInput = $state<HTMLInputElement>();
   let detailsEl = $state<HTMLDetailsElement>();
 
@@ -55,28 +56,11 @@
     return () => document.removeEventListener('click', onDocClick);
   });
 
-  function submit(event?: SubmitEvent) {
-    event?.preventDefault();
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    oncreate(trimmed);
-    name = '';
-  }
-
-  // webview・自動化環境ではフォームの暗黙的 submit が働かないため Enter を明示処理する
-  function handleKeydown(event: KeyboardEvent) {
-    if (event.isComposing || event.keyCode === 229) return;
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      submit();
-    }
-  }
-
   const filters = $derived([
-    { value: 'overdue', label: t('filterOverdue'), count: rangeCounts.overdue, danger: true },
-    { value: 'today', label: t('filterToday'), count: rangeCounts.today, danger: false },
-    { value: 'tomorrow', label: t('filterTomorrow'), count: rangeCounts.tomorrow, danger: false },
-    { value: 'week', label: t('filterWeek'), count: rangeCounts.week, danger: false },
+    { value: 'overdue', label: t('filterOverdue'), count: rangeCounts.overdue },
+    { value: 'today', label: t('filterToday'), count: rangeCounts.today },
+    { value: 'tomorrow', label: t('filterTomorrow'), count: rangeCounts.tomorrow },
+    { value: 'week', label: t('filterWeek'), count: rangeCounts.week },
   ] as const);
 </script>
 
@@ -113,7 +97,6 @@
       <button
         class="filter-btn"
         class:active={dueFilter === filter.value}
-        class:danger={filter.danger}
         onclick={() => onsetDueFilter(dueFilter === filter.value ? null : filter.value)}
       >
         <span class="num">{filter.count}</span>
@@ -139,16 +122,14 @@
     </div>
   {/if}
 
-  <form class="new-list" onsubmit={(e) => submit(e)}>
-    <input
-      type="text"
-      placeholder={t('newListPlaceholder')}
-      aria-label={t('newListPlaceholder')}
-      bind:value={name}
-      onkeydown={handleKeydown}
-    />
-    <button type="submit" disabled={!name.trim()}>{t('create')}</button>
-  </form>
+  <input
+    class="search"
+    type="search"
+    placeholder={t('searchPlaceholder')}
+    aria-label={t('search')}
+    value={search}
+    oninput={(e) => onsearch(e.currentTarget.value)}
+  />
 
   <!-- 書き出し・読み込み・言語は常用しないため折りたたみに格納。
        ドット絵アイコンをクリックすると右にピクセル風ウィンドウが出る -->

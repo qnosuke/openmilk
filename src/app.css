@@ -158,11 +158,6 @@ main {
   border-radius: 999px;
 }
 
-.new-list {
-  display: flex;
-  gap: 6px;
-}
-
 .due-filter {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -201,10 +196,6 @@ main {
   font-variant-numeric: tabular-nums;
 }
 
-.filter-btn.danger .num {
-  color: var(--overdue);
-}
-
 .filter-btn.active {
   color: rgb(255 255 255 / 75%);
   background: var(--accent);
@@ -215,9 +206,21 @@ main {
   color: #fff;
 }
 
-.filter-btn.danger.active {
-  background: var(--overdue);
-  border-color: var(--overdue);
+.search {
+  width: 100%;
+  padding: 8px 11px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  outline: none;
+}
+
+.search:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgb(47 111 237 / 15%);
 }
 
 /* --- タグクラウド --- */
@@ -354,29 +357,6 @@ main {
   width: 8px;
   height: 13px;
   background: #fff;
-}
-
-.new-list input {
-  flex: 1;
-  min-width: 0;
-  padding: 6px 9px;
-  font-size: 12.5px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-}
-
-.new-list button {
-  padding: 0 10px;
-  font-size: 12px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-.new-list button:disabled {
-  opacity: 0.4;
-  cursor: default;
 }
 
 .data-actions {

@@ -14,6 +14,7 @@
     search,
     onsearch,
     onselect,
+    oncreate,
     ondelete,
     onexport,
     onimportFile,
@@ -32,6 +33,7 @@
     dataStatus: string;
     search: string;
     onselect: (id: string) => void;
+    oncreate: (name: string) => void;
     ondelete: (id: string) => void;
     onexport: () => void;
     onimportFile: (file: File) => void;
@@ -44,6 +46,24 @@
 
   let fileInput = $state<HTMLInputElement>();
   let detailsEl = $state<HTMLDetailsElement>();
+  let name = $state('');
+
+  function submit(event?: SubmitEvent) {
+    event?.preventDefault();
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    oncreate(trimmed);
+    name = '';
+  }
+
+  // webview・自動化環境ではフォームの暗黙的 submit が働かないため Enter を明示処理する
+  function handleKeydown(event: KeyboardEvent) {
+    if (event.isComposing || event.keyCode === 229) return;
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      submit();
+    }
+  }
 
   // ウィンドウの外をクリックしたら設定を閉じる
   $effect(() => {
@@ -140,6 +160,16 @@
       <img class="milk-icon" src="/milk-pixel.png" alt={t('settings')} />
     </summary>
     <div class="settings-body">
+      <form class="new-list" onsubmit={(e) => submit(e)}>
+        <input
+          type="text"
+          placeholder={t('newListPlaceholder')}
+          aria-label={t('newListPlaceholder')}
+          bind:value={name}
+          onkeydown={handleKeydown}
+        />
+        <button type="submit" disabled={!name.trim()}>{t('create')}</button>
+      </form>
       <div class="data-actions">
         <button type="button" onclick={onexport}>{t('exportLabel')}</button>
         <button type="button" onclick={() => fileInput?.click()}>{t('importLabel')}</button>

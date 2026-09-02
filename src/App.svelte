@@ -7,6 +7,7 @@
   import { i18n, t } from './lib/i18n.svelte';
   import type { List, Task } from './lib/db/schema';
   import {
+    createList,
     createTask,
     deleteList,
     ensureFixedLists,
@@ -253,6 +254,12 @@
     selectedIds = checked ? visibleTasks.map((t) => t.id) : [];
   }
 
+  async function addList(name: string) {
+    const list = await createList(name);
+    // 作成したリストに切り替える（そのままタスクを追加できるように）
+    selected = list.id;
+  }
+
   function exitSelectMode() {
     selectMode = false;
     selectedIds = [];
@@ -288,6 +295,7 @@
     search={searchQuery}
     {dataStatus}
     onselect={(id) => (selected = id)}
+    oncreate={addList}
     ondelete={removeList}
     onexport={exportData}
     onimportFile={importData}

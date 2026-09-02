@@ -436,6 +436,36 @@ main {
   gap: 6px;
 }
 
+.new-list {
+  display: flex;
+  gap: 6px;
+}
+
+.new-list input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 9px;
+  font-size: 12.5px;
+  color: var(--text);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.new-list button {
+  padding: 0 10px;
+  font-size: 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.new-list button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .data-actions button {
   flex: 1;
   padding: 6px 0;

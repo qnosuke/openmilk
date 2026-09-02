@@ -31,7 +31,7 @@
   let editingId = $state<string | null>(null);
   let sortMode = $state<SortMode>(loadSortMode());
   let dataStatus = $state('');
-  let dueFilter = $state<'today' | 'tomorrow' | 'week' | null>(null);
+  let dueFilter = $state<'overdue' | 'today' | 'tomorrow' | 'week' | null>(null);
   let tagFilter = $state<string | null>(null);
 
   function loadSortMode(): SortMode {
@@ -154,28 +154,32 @@
       if (tagFilter !== null && !task.tags.includes(tagFilter)) return false;
       if (dueFilter === null) return true;
       if (!task.due) return false;
-      if (dueFilter === 'today') return task.due <= t0; // 期限切れは今日の仕事に含める
+      // 期限切れは独立ボタン。今日=当日のみ
+      if (dueFilter === 'overdue') return task.due < t0;
+      if (dueFilter === 'today') return task.due === t0;
       if (dueFilter === 'tomorrow') return task.due === tomorrow;
       return task.due >= t0 && task.due <= weekEnd;
     });
     return sortTasks(filtered, sortMode);
   });
 
-  /** サイドバーの 今日/明日/1週間 ボタンに表示する未完了件数 */
+  /** サイドバーの期間タイルに表示する未完了件数 */
   const rangeCounts = $derived.by(() => {
     const t0 = todayISO();
     const tomorrow = addDays(t0, 1);
     const weekEnd = addDays(t0, 7);
+    let overdue = 0;
     let today = 0;
     let tomorrowCount = 0;
     let week = 0;
     for (const task of tasks) {
       if (task.completedAt !== undefined || !task.due) continue;
-      if (task.due <= t0) today += 1;
+      if (task.due < t0) overdue += 1;
+      if (task.due === t0) today += 1;
       if (task.due === tomorrow) tomorrowCount += 1;
       if (task.due >= t0 && task.due <= weekEnd) week += 1;
     }
-    return { today, tomorrow: tomorrowCount, week };
+    return { overdue, today, tomorrow: tomorrowCount, week };
   });
 
   const remaining = $derived(visibleTasks.filter((task) => task.completedAt === undefined).length);

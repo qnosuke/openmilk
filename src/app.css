@@ -164,39 +164,60 @@ main {
 }
 
 .due-filter {
-  display: flex;
-  gap: 4px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
 }
 
 .filter-btn {
-  flex: 1;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 5px 0;
-  font-size: 12px;
-  color: var(--text);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 8px 11px;
+  font-size: 11px;
+  color: var(--muted);
+  text-align: left;
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 12px;
   cursor: pointer;
+  transition: transform 0.08s ease, background 0.12s ease, border-color 0.12s ease;
 }
 
-.filter-btn .count {
-  font-size: 10.5px;
-  color: var(--muted);
+.filter-btn:hover {
+  border-color: rgb(0 0 0 / 20%);
+}
+
+.filter-btn:active {
+  transform: scale(0.96);
+}
+
+.filter-btn .num {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.filter-btn.danger .num {
+  color: var(--overdue);
 }
 
 .filter-btn.active {
-  font-weight: 600;
-  color: #fff;
+  color: rgb(255 255 255 / 75%);
   background: var(--accent);
   border-color: var(--accent);
 }
 
-.filter-btn.active .count {
-  color: rgb(255 255 255 / 80%);
+.filter-btn.active .num {
+  color: #fff;
+}
+
+.filter-btn.danger.active {
+  background: var(--overdue);
+  border-color: var(--overdue);
 }
 
 .settings {

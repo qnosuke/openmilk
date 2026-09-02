@@ -19,9 +19,9 @@
     lists: List[];
     selected: string;
     counts: Record<string, number>;
-    /** 今日/明日/1週間の未完了件数 */
-    rangeCounts: { today: number; tomorrow: number; week: number };
-    dueFilter: 'today' | 'tomorrow' | 'week' | null;
+    /** 今日/明日/1週間/期限切れの未完了件数 */
+    rangeCounts: { overdue: number; today: number; tomorrow: number; week: number };
+    dueFilter: 'overdue' | 'today' | 'tomorrow' | 'week' | null;
     dataStatus: string;
     onselect: (id: string) => void;
     oncreate: (name: string) => void;
@@ -29,7 +29,7 @@
     onexport: () => void;
     onimportFile: (file: File) => void;
     /** 同じボタンを押すと解除される（null が渡る） */
-    onsetDueFilter: (filter: 'today' | 'tomorrow' | 'week' | null) => void;
+    onsetDueFilter: (filter: 'overdue' | 'today' | 'tomorrow' | 'week' | null) => void;
   } = $props();
 
   let name = $state('');
@@ -65,9 +65,10 @@
   }
 
   const filters = $derived([
-    { value: 'today', label: t('filterToday'), count: rangeCounts.today },
-    { value: 'tomorrow', label: t('filterTomorrow'), count: rangeCounts.tomorrow },
-    { value: 'week', label: t('filterWeek'), count: rangeCounts.week },
+    { value: 'overdue', label: t('filterOverdue'), count: rangeCounts.overdue, danger: true },
+    { value: 'today', label: t('filterToday'), count: rangeCounts.today, danger: false },
+    { value: 'tomorrow', label: t('filterTomorrow'), count: rangeCounts.tomorrow, danger: false },
+    { value: 'week', label: t('filterWeek'), count: rangeCounts.week, danger: false },
   ] as const);
 </script>
 
@@ -104,10 +105,11 @@
       <button
         class="filter-btn"
         class:active={dueFilter === filter.value}
+        class:danger={filter.danger}
         onclick={() => onsetDueFilter(dueFilter === filter.value ? null : filter.value)}
       >
-        {filter.label}
-        <span class="count">{filter.count}</span>
+        <span class="num">{filter.count}</span>
+        <span class="lbl">{filter.label}</span>
       </button>
     {/each}
   </div>

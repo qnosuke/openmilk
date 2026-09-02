@@ -69,6 +69,7 @@ const dicts: Record<Locale, Dict> = {
     filterWeek: '1週間',
     ariaTagFilter: 'タグ「{tag}」で絞り込み',
     clearTagFilter: 'タグ絞り込みを解除',
+    filterOverdue: '期限切れ',
   },
   en: {
     allLists: 'All',
@@ -129,6 +130,7 @@ const dicts: Record<Locale, Dict> = {
     filterWeek: '1 week',
     ariaTagFilter: 'Filter by tag "{tag}"',
     clearTagFilter: 'Clear tag filter',
+    filterOverdue: 'Overdue',
   },
   zh: {
     allLists: '全部',
@@ -189,6 +191,7 @@ const dicts: Record<Locale, Dict> = {
     filterWeek: '一周',
     ariaTagFilter: '按标签「{tag}」筛选',
     clearTagFilter: '清除标签筛选',
+    filterOverdue: '已过期',
   },
 };
 

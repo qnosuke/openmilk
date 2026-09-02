@@ -207,6 +207,8 @@ main {
 .settings summary {
   display: block;
   width: fit-content;
+  /* 左カラムの中央に配置 */
+  margin-inline: auto;
   border-radius: 10px;
   cursor: pointer;
   list-style: none;

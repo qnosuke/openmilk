@@ -27,6 +27,9 @@
   // フォームの暗黙的な submit が働かない環境（webview・自動化）でも
   // Enter で確定できるようにする
   function handleKeydown(event: KeyboardEvent) {
+    // IME 変換の確定に使われた Enter は無視する
+    // （keyCode 229 は Safari が変換確定の Enter に返すレガシー値）
+    if (event.isComposing || event.keyCode === 229) return;
     if (event.key === 'Enter') {
       event.preventDefault();
       submit();

@@ -7,6 +7,8 @@
     selected,
     counts,
     rangeCounts,
+    tagCounts,
+    activeTag,
     dueFilter,
     dataStatus,
     onselect,
@@ -15,12 +17,16 @@
     onexport,
     onimportFile,
     onsetDueFilter,
+    onselectTag,
   }: {
     lists: List[];
     selected: string;
     counts: Record<string, number>;
     /** 今日/明日/1週間/期限切れの未完了件数 */
     rangeCounts: { overdue: number; today: number; tomorrow: number; week: number };
+    /** 未完了タスクのタグ出現数（多い順） */
+    tagCounts: { name: string; count: number }[];
+    activeTag: string | null;
     dueFilter: 'overdue' | 'today' | 'tomorrow' | 'week' | null;
     dataStatus: string;
     onselect: (id: string) => void;
@@ -30,6 +36,8 @@
     onimportFile: (file: File) => void;
     /** 同じボタンを押すと解除される（null が渡る） */
     onsetDueFilter: (filter: 'overdue' | 'today' | 'tomorrow' | 'week' | null) => void;
+    /** タグクリックで絞り込みトグル */
+    onselectTag: (tag: string) => void;
   } = $props();
 
   let name = $state('');
@@ -113,6 +121,23 @@
       </button>
     {/each}
   </div>
+
+  {#if tagCounts.length > 0}
+    <div class="tag-cloud" role="group" aria-label={t('tagsLabel')}>
+      <div class="section-label">{t('tagsLabel')}</div>
+      <div class="tag-cloud-chips">
+        {#each tagCounts as tag (tag.name)}
+          <button
+            class="tag-chip"
+            class:active={activeTag === tag.name}
+            onclick={() => onselectTag(tag.name)}
+          >
+            #{tag.name}<span class="tag-count">{tag.count}</span>
+          </button>
+        {/each}
+      </div>
+    </div>
+  {/if}
 
   <form class="new-list" onsubmit={(e) => submit(e)}>
     <input

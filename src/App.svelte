@@ -208,6 +208,18 @@
       .reduce((sum, task) => sum + (task.estimateMinutes ?? 0), 0),
   );
 
+  /** サイドバーのタグクラウド: 未完了タスクのタグ出現数（多い順） */
+  const tagCounts = $derived.by(() => {
+    const map = new Map<string, number>();
+    for (const task of tasks) {
+      if (task.completedAt !== undefined) continue;
+      for (const tag of task.tags) map.set(tag, (map.get(tag) ?? 0) + 1);
+    }
+    return [...map.entries()]
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+  });
+
   const currentListName = $derived(
     selected === 'all'
       ? t('allLists')
@@ -248,6 +260,8 @@
     selected={selected}
     {counts}
     {rangeCounts}
+    {tagCounts}
+    activeTag={tagFilter}
     {dueFilter}
     {dataStatus}
     onselect={(id) => (selected = id)}
@@ -256,6 +270,7 @@
     onexport={exportData}
     onimportFile={importData}
     onsetDueFilter={(filter) => (dueFilter = filter)}
+    onselectTag={(tag) => (tagFilter = tagFilter === tag ? null : tag)}
   />
 
   <main>

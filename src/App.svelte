@@ -134,6 +134,8 @@
     try {
       const data = JSON.parse(await file.text());
       const count = await importBackup(data);
+      // 移行元の固定リストが重複して入る可能性があるため、すぐに自己修復させる
+      await ensureFixedLists();
       flashDataStatus(t('importDone', { n: count }));
     } catch {
       flashDataStatus(t('importInvalid'));

@@ -104,19 +104,21 @@ const FIXED_LIST_ORDER: Record<string, number> = {
   someday: -1,
 };
 
-/** 起動時に一度呼び、固定リストが揃っていることを保証する（冪等） */
+/**
+ * 起動時に一度呼び、固定リストが揃っていることを保証する（冪等）。
+ * バックアップ移行などで同名リストが重複した場合は、タスクを正規リスト側に
+ * 統合してから重複を削除する（自己修復）。
+ */
 export async function ensureFixedLists(): Promise<void> {
-  await db.transaction('rw', db.lists, async () => {
+  await db.transaction('rw', db.lists, db.tasks, async () => {
+    const now = nowISO();
     const all = await db.lists.toArray();
     for (const name of FIXED_LIST_NAMES) {
-      const existing = all.find((l) => l.name.toLowerCase() === name && !l.deleted);
       const targetOrder = FIXED_LIST_ORDER[name];
-      if (existing) {
-        if (existing.fixed !== 1 || existing.order !== targetOrder) {
-          await db.lists.put({ ...existing, fixed: 1, order: targetOrder, updatedAt: nowISO() });
-        }
-      } else {
-        const now = nowISO();
+      const matches = all
+        .filter((l) => !l.deleted && l.name.toLowerCase() === name)
+        .sort((a, b) => (b.fixed ?? 0) - (a.fixed ?? 0));
+      if (matches.length === 0) {
         await db.lists.add({
           id: crypto.randomUUID(),
           name,
@@ -126,6 +128,17 @@ export async function ensureFixedLists(): Promise<void> {
           deleted: 0,
           fixed: 1,
         });
+        continue;
+      }
+      // fixed になっているもの（なければ先頭）を正規リストにする
+      const canonical: List = { ...matches[0], fixed: 1, order: targetOrder, updatedAt: now };
+      await db.lists.put(canonical);
+      for (const dup of matches.slice(1)) {
+        const dupTasks = await db.tasks.where('listId').equals(dup.id).toArray();
+        for (const t of dupTasks) {
+          await db.tasks.put({ ...t, listId: canonical.id, updatedAt: now });
+        }
+        await db.lists.delete(dup.id);
       }
     }
   });
@@ -195,7 +208,8 @@ export async function importBackup(data: BackupData): Promise<number> {
       if (!list?.id || typeof list.name !== 'string') continue;
       const existing = await db.lists.get(list.id);
       if (existing && existing.updatedAt > (list.updatedAt ?? '')) continue;
-      await db.lists.put(list);
+      // 既存が固定リストの場合、上書きで fixed が外れないようにする
+      await db.lists.put(existing?.fixed ? { ...list, fixed: 1 } : list);
     }
   });
   return imported;

@@ -54,6 +54,8 @@ const dicts: Record<Locale, Dict> = {
     ariaReopen: '「{title}」を未完了に戻す',
     ariaDelete: '「{title}」を削除',
     ariaEdit: '「{title}」の詳細を編集',
+    ariaDeleteList: 'リスト「{name}」を削除',
+    deleteListHint: 'リストを削除（タスクは INBOX に戻ります）',
   },
   en: {
     allLists: 'All',
@@ -99,6 +101,8 @@ const dicts: Record<Locale, Dict> = {
     ariaReopen: 'Reopen "{title}"',
     ariaDelete: 'Delete "{title}"',
     ariaEdit: 'Edit "{title}"',
+    ariaDeleteList: 'Delete list "{name}"',
+    deleteListHint: 'Delete list (tasks move back to INBOX)',
   },
   zh: {
     allLists: '全部',
@@ -144,6 +148,8 @@ const dicts: Record<Locale, Dict> = {
     ariaReopen: '将「{title}」改回未完成',
     ariaDelete: '删除「{title}」',
     ariaEdit: '编辑「{title}」的详细内容',
+    ariaDeleteList: '删除列表「{name}」',
+    deleteListHint: '删除列表（任务将回到 INBOX）',
   },
 };
 

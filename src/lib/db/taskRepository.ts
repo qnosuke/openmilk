@@ -94,6 +94,20 @@ export async function createList(name: string): Promise<List> {
   return list;
 }
 
+/** リストを削除する。タスクは失わない（INBOX へ戻す） */
+export async function deleteList(id: string): Promise<void> {
+  await db.transaction('rw', db.lists, db.tasks, async () => {
+    const now = nowISO();
+    const tasks = await db.tasks.where('listId').equals(id).toArray();
+    for (const task of tasks) {
+      task.listId = undefined;
+      task.updatedAt = now;
+      await db.tasks.put(task);
+    }
+    await db.lists.delete(id);
+  });
+}
+
 export function observeLists(cb: (lists: List[]) => void): () => void {
   const subscription = liveQuery(async () => {
     const all = await db.lists.where('deleted').equals(0).toArray();

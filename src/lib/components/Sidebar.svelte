@@ -8,12 +8,14 @@
     counts,
     onselect,
     oncreate,
+    ondelete,
   }: {
     lists: List[];
     selected: string;
     counts: Record<string, number>;
     onselect: (id: string) => void;
     oncreate: (name: string) => void;
+    ondelete: (id: string) => void;
   } = $props();
 
   let name = $state('');
@@ -44,19 +46,27 @@
       <span class="nav-label">{t('allLists')}</span>
       <span class="count">{counts.all ?? 0}</span>
     </button>
-    <button class="nav-btn" class:active={selected === 'inbox'} onclick={() => onselect('inbox')}>
+    <button class="nav-btn inbox" class:active={selected === 'inbox'} onclick={() => onselect('inbox')}>
       <span class="nav-label">{t('inbox')}</span>
       <span class="count">{counts.inbox ?? 0}</span>
     </button>
     {#each lists as list (list.id)}
-      <button class="nav-btn" class:active={selected === list.id} onclick={() => onselect(list.id)}>
-        <span class="nav-label">{list.name}</span>
-        <span class="count">{counts[list.id] ?? 0}</span>
-      </button>
+      <div class="nav-item">
+        <button class="nav-btn" class:active={selected === list.id} onclick={() => onselect(list.id)}>
+          <span class="nav-label">{list.name}</span>
+          <span class="count">{counts[list.id] ?? 0}</span>
+        </button>
+        <button
+          class="nav-delete"
+          aria-label={t('ariaDeleteList', { name: list.name })}
+          title={t('deleteListHint')}
+          onclick={() => ondelete(list.id)}>×</button
+        >
+      </div>
     {/each}
   </nav>
 
-  <form class="new-list" onsubmit={submit}>
+  <form class="new-list" onsubmit={(e) => submit(e)}>
     <input
       type="text"
       placeholder={t('newListPlaceholder')}

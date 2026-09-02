@@ -9,6 +9,7 @@
   import {
     createList,
     createTask,
+    deleteList,
     observeLists,
     observeVisibleTasks,
     setCompleted,
@@ -119,6 +120,18 @@
     });
   }
 
+  async function addList(name: string) {
+    const list = await createList(name);
+    // 作成したリストに切り替える（そのままタスクを追加できるように）
+    selected = list.id;
+  }
+
+  async function removeList(id: string) {
+    await deleteList(id);
+    // 表示中のリストを消した場合は INBOX へ戻る
+    if (selected === id) selected = 'inbox';
+  }
+
   async function saveEdit(id: string, edits: TaskEdits) {
     await updateTask(id, edits);
     editingId = null;
@@ -131,7 +144,8 @@
     selected={selected}
     {counts}
     onselect={(id) => (selected = id)}
-    oncreate={createList}
+    oncreate={addList}
+    ondelete={removeList}
   />
 
   <main>

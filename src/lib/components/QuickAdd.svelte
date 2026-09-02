@@ -17,11 +17,20 @@
     return parts.join('　·　');
   });
 
-  function submit(event: SubmitEvent) {
-    event.preventDefault();
+  function submit(event?: SubmitEvent) {
+    event?.preventDefault();
     if (!parsed?.title) return;
     onadd(parsed);
     text = '';
+  }
+
+  // フォームの暗黙的な submit が働かない環境（webview・自動化）でも
+  // Enter で確定できるようにする
+  function handleKeydown(event: KeyboardEvent) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      submit();
+    }
   }
 </script>
 
@@ -31,6 +40,7 @@
     placeholder="タスクを追加（例: 牛乳を買う 明日 !2 #買い物）"
     aria-label="タスクを追加"
     bind:value={text}
+    onkeydown={handleKeydown}
   />
   <button type="submit" disabled={!parsed?.title}>追加</button>
 </form>

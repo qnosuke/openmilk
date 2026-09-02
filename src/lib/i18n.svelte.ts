@@ -62,6 +62,11 @@ const dicts: Record<Locale, Dict> = {
     dataExported: '書き出しました',
     importDone: '{n} 件を取り込みました',
     importInvalid: 'JSON を読み取れませんでした',
+    settings: '設定',
+    filterAria: '期間で絞り込み',
+    filterToday: '今日',
+    filterTomorrow: '明日',
+    filterWeek: '1週間',
   },
   en: {
     allLists: 'All',
@@ -115,6 +120,11 @@ const dicts: Record<Locale, Dict> = {
     dataExported: 'Exported',
     importDone: 'Imported {n} tasks',
     importInvalid: 'Could not read that file',
+    settings: 'Settings',
+    filterAria: 'Filter by date',
+    filterToday: 'Today',
+    filterTomorrow: 'Tomorrow',
+    filterWeek: '1 week',
   },
   zh: {
     allLists: '全部',
@@ -168,6 +178,11 @@ const dicts: Record<Locale, Dict> = {
     dataExported: '已导出',
     importDone: '已导入 {n} 条任务',
     importInvalid: '无法读取该文件',
+    settings: '设置',
+    filterAria: '按日期筛选',
+    filterToday: '今天',
+    filterTomorrow: '明天',
+    filterWeek: '一周',
   },
 };
 

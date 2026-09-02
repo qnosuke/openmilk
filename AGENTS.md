@@ -7,6 +7,7 @@
 Remember The Milk の代替となる個人向けタスク管理 Web アプリ。
 サーバーなしの静的 PWA（Vite + Svelte 5 + TypeScript + Dexie.js）で、
 データはすべてブラウザ内の IndexedDB に保存する。
+UI は日本語 / English / 中文の 3 言語（`src/lib/i18n.svelte.ts` の辞書で管理）。
 設計方針とロードマップは `DEVELOPMENT_FLOW.md` を参照。
 
 ## コマンド
@@ -18,11 +19,12 @@ Remember The Milk の代替となる個人向けタスク管理 Web アプリ。
 
 ## 構成と慣習
 
-- `src/lib/db/schema.ts` — Task 型と Dexie のスキーマ定義
+- `src/lib/db/schema.ts` — Task / List 型と Dexie のスキーマ定義
 - `src/lib/db/taskRepository.ts` — DB アクセスはこの層のみから行う。
   UI コンポーネントから Dexie を直接 import しない
-- `src/lib/utils/` — 日付計算・クイック追加パーサー（テストあり）
-- `src/lib/components/` — UI 部品
+- `src/lib/utils/` — 日付計算・クイック追加パーサー（日/英/中対応）・ソート（いずれもテストあり）
+- `src/lib/components/` — UI 部品。表示文字列は `t()` 経由で辞書から取得する
+- `src/lib/i18n.svelte.ts` — UI 多言語辞書。キーを追加するときは 3 言語すべてに足す
 
 必須ルール:
 

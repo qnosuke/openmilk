@@ -1,5 +1,5 @@
 import { liveQuery } from 'dexie';
-import { db, type Task } from './schema';
+import { db, type List, type Task } from './schema';
 
 export interface NewTask {
   title: string;
@@ -7,6 +7,8 @@ export interface NewTask {
   due?: string;
   priority?: 1 | 2 | 3;
   tags?: string[];
+  estimateMinutes?: number;
+  listId?: string;
 }
 
 function nowISO(): string {
@@ -22,6 +24,8 @@ export async function createTask(input: NewTask): Promise<Task> {
     due: input.due,
     priority: input.priority,
     tags: input.tags ?? [],
+    estimateMinutes: input.estimateMinutes,
+    listId: input.listId,
     createdAt: now,
     updatedAt: now,
     deleted: 0,
@@ -30,12 +34,21 @@ export async function createTask(input: NewTask): Promise<Task> {
   return task;
 }
 
-/** 部分更新は必ずこの関数経由（updatedAt を自動更新）。完了状態の変更は setCompleted を使う */
+/**
+ * 部分更新は必ずこの関数経由（updatedAt を自動更新）。
+ * undefined を代入するとフィールドが消えるため、get→put で適用する。
+ * 完了状態の変更は setCompleted を使う。
+ */
 export async function updateTask(
   id: string,
   changes: Partial<Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'completedAt'>>,
 ): Promise<void> {
-  await db.tasks.update(id, { ...changes, updatedAt: nowISO() });
+  await db.transaction('rw', db.tasks, async () => {
+    const task = await db.tasks.get(id);
+    if (!task) return;
+    Object.assign(task, changes, { updatedAt: nowISO() });
+    await db.tasks.put(task);
+  });
 }
 
 export async function setCompleted(id: string, completed: boolean): Promise<void> {
@@ -52,26 +65,9 @@ export async function softDeleteTask(id: string): Promise<void> {
   await updateTask(id, { deleted: 1 });
 }
 
-/** 未削除タスクを表示順で返す: 未完了（期限→優先度→新しい順）→ 完了（新しい順） */
+/** 全未削除タスク。表示順は UI 側 (sortTasks) で決める */
 export async function fetchVisibleTasks(): Promise<Task[]> {
-  const all = await db.tasks.where('deleted').equals(0).toArray();
-  return all.sort(compareTasks);
-}
-
-export function compareTasks(a: Task, b: Task): number {
-  const aDone = a.completedAt !== undefined;
-  const bDone = b.completedAt !== undefined;
-  if (aDone !== bDone) return aDone ? 1 : -1;
-  if (!aDone) {
-    if (!!a.due !== !!b.due) return a.due ? -1 : 1;
-    if (a.due && b.due && a.due !== b.due) return a.due < b.due ? -1 : 1;
-    const ap = a.priority ?? 9;
-    const bp = b.priority ?? 9;
-    if (ap !== bp) return ap - bp;
-  } else if (a.completedAt !== b.completedAt) {
-    return a.completedAt! < b.completedAt! ? 1 : -1;
-  }
-  return a.createdAt < b.createdAt ? 1 : -1;
+  return db.tasks.where('deleted').equals(0).toArray();
 }
 
 /** UI 向けライブクエリ。DB が変わると自動で再通知される。戻り値の関数で購読解除 */
@@ -79,6 +75,32 @@ export function observeVisibleTasks(cb: (tasks: Task[]) => void): () => void {
   const subscription = liveQuery(fetchVisibleTasks).subscribe({
     next: (tasks) => cb(tasks ?? []),
     error: (err) => console.error('openmilk: liveQuery error', err),
+  });
+  return () => subscription.unsubscribe();
+}
+
+export async function createList(name: string): Promise<List> {
+  const now = nowISO();
+  const existing = await db.lists.count();
+  const list: List = {
+    id: crypto.randomUUID(),
+    name: name.trim(),
+    order: existing,
+    createdAt: now,
+    updatedAt: now,
+    deleted: 0,
+  };
+  await db.lists.add(list);
+  return list;
+}
+
+export function observeLists(cb: (lists: List[]) => void): () => void {
+  const subscription = liveQuery(async () => {
+    const all = await db.lists.where('deleted').equals(0).toArray();
+    return all.sort((a, b) => a.order - b.order || (a.createdAt < b.createdAt ? -1 : 1));
+  }).subscribe({
+    next: (lists) => cb(lists ?? []),
+    error: (err) => console.error('openmilk: lists liveQuery error', err),
   });
   return () => subscription.unsubscribe();
 }

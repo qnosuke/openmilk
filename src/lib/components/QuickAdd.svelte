@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { formatDue } from '../utils/date';
+  import { i18n, t } from '../i18n.svelte';
+  import { formatDue, formatDuration } from '../utils/date';
   import { parseTaskInput, type ParsedTask } from '../utils/parseTask';
 
   let { onadd }: { onadd: (parsed: ParsedTask) => void } = $props();
@@ -11,9 +12,14 @@
   const preview = $derived.by(() => {
     if (!parsed?.title) return '';
     const parts: string[] = [];
-    if (parsed.due) parts.push(`期限: ${formatDue(parsed.due)}`);
-    if (parsed.priority) parts.push(`優先度: !${parsed.priority}`);
-    if (parsed.tags.length > 0) parts.push(`タグ: ${parsed.tags.map((t) => `#${t}`).join(' ')}`);
+    if (parsed.due) parts.push(`${t('prevDue')}: ${formatDue(parsed.due, i18n.locale)}`);
+    if (parsed.priority) parts.push(`${t('prevPriority')}: !${parsed.priority}`);
+    if (parsed.estimateMinutes) {
+      parts.push(`${t('prevEstimate')}: ${formatDuration(parsed.estimateMinutes, i18n.locale)}`);
+    }
+    if (parsed.tags.length > 0) {
+      parts.push(`${t('prevTags')}: ${parsed.tags.map((tag) => `#${tag}`).join(' ')}`);
+    }
     return parts.join('　·　');
   });
 
@@ -37,15 +43,15 @@
   }
 </script>
 
-<form class="quick-add" onsubmit={submit}>
+<form class="quick-add" onsubmit={(e) => submit(e)}>
   <input
     type="text"
-    placeholder="タスクを追加（例: 牛乳を買う 明日 !2 #買い物）"
-    aria-label="タスクを追加"
+    placeholder={t('addPlaceholder')}
+    aria-label={t('add')}
     bind:value={text}
     onkeydown={handleKeydown}
   />
-  <button type="submit" disabled={!parsed?.title}>追加</button>
+  <button type="submit" disabled={!parsed?.title}>{t('add')}</button>
 </form>
 {#if preview}
   <p class="preview" role="status">{preview}</p>

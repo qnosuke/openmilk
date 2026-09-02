@@ -6,16 +6,22 @@
   let {
     task,
     listName,
+    activeTag,
     ontoggle,
     ondelete,
     onedit,
+    ontag,
   }: {
     task: Task;
     /** 「すべて」表示時に所属リスト名を出す（INBOX タスクでは undefined） */
     listName?: string;
+    /** タグ絞り込み中のタグ（一致するチップを強調） */
+    activeTag?: string | null;
     ontoggle: (id: string, completed: boolean) => void;
     ondelete: (id: string) => void;
     onedit: (id: string) => void;
+    /** タグチップをクリック → そのタグで絞り込む（もう一度で解除） */
+    ontag: (tag: string) => void;
   } = $props();
 
   const overdue = $derived(
@@ -51,7 +57,14 @@
         {formatDue(task.due, i18n.locale)}{task.dueTime ? ` ${task.dueTime}` : ''}
       </span>
     {/if}
-    {#each task.tags as tag}<span class="tag">#{tag}</span>{/each}
+    {#each task.tags as tag}
+      <button
+        class="tag tag-btn"
+        class:active={activeTag === tag}
+        aria-label={t('ariaTagFilter', { tag })}
+        onclick={() => ontag(tag)}>#{tag}</button
+      >
+    {/each}
     {#if listName}<span class="list-chip">{listName}</span>{/if}
   </span>
   <button

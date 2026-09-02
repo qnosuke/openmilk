@@ -32,6 +32,7 @@
   let sortMode = $state<SortMode>(loadSortMode());
   let dataStatus = $state('');
   let dueFilter = $state<'today' | 'tomorrow' | 'week' | null>(null);
+  let tagFilter = $state<string | null>(null);
 
   function loadSortMode(): SortMode {
     try {
@@ -150,6 +151,7 @@
       const inSelectedList =
         selected === 'all' || (selected === 'inbox' ? !task.listId : task.listId === selected);
       if (!inSelectedList) return false;
+      if (tagFilter !== null && !task.tags.includes(tagFilter)) return false;
       if (dueFilter === null) return true;
       if (!task.due) return false;
       if (dueFilter === 'today') return task.due <= t0; // 期限切れは今日の仕事に含める
@@ -258,6 +260,15 @@
         <h1>{currentListName}</h1>
         <span class="today">{formatTodayLong(i18n.locale)}</span>
       </div>
+      {#if tagFilter}
+        <button
+          class="tag-filter-clear"
+          onclick={() => (tagFilter = null)}
+          aria-label={t('clearTagFilter')}
+        >
+          #{tagFilter} ✕
+        </button>
+      {/if}
       <label class="sort">
         <span>{t('sortLabel')}</span>
         <select bind:value={sortMode} aria-label={t('sortLabel')}>
@@ -280,13 +291,15 @@
     {:else}
       <ul class="tasks">
         {#each visibleTasks as task (task.id)}
-          <TaskRow
-            {task}
-            listName={lists.find((l) => l.id === task.listId)?.name}
-            ontoggle={(id, completed) => setCompleted(id, completed)}
-            ondelete={softDeleteTask}
-            onedit={(id) => (editingId = id)}
-          />
+        <TaskRow
+          {task}
+          listName={lists.find((l) => l.id === task.listId)?.name}
+          activeTag={tagFilter}
+          ontoggle={(id, completed) => setCompleted(id, completed)}
+          ondelete={softDeleteTask}
+          onedit={(id) => (editingId = id)}
+          ontag={(tag) => (tagFilter = tagFilter === tag ? null : tag)}
+        />
         {/each}
       </ul>
       <p class="footer">

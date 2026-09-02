@@ -67,6 +67,8 @@ const dicts: Record<Locale, Dict> = {
     filterToday: '今日',
     filterTomorrow: '明日',
     filterWeek: '1週間',
+    ariaTagFilter: 'タグ「{tag}」で絞り込み',
+    clearTagFilter: 'タグ絞り込みを解除',
   },
   en: {
     allLists: 'All',
@@ -125,6 +127,8 @@ const dicts: Record<Locale, Dict> = {
     filterToday: 'Today',
     filterTomorrow: 'Tomorrow',
     filterWeek: '1 week',
+    ariaTagFilter: 'Filter by tag "{tag}"',
+    clearTagFilter: 'Clear tag filter',
   },
   zh: {
     allLists: '全部',
@@ -183,6 +187,8 @@ const dicts: Record<Locale, Dict> = {
     filterToday: '今天',
     filterTomorrow: '明天',
     filterWeek: '一周',
+    ariaTagFilter: '按标签「{tag}」筛选',
+    clearTagFilter: '清除标签筛选',
   },
 };
 

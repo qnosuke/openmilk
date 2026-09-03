@@ -925,8 +925,9 @@ dialog.dialog::backdrop {
 .dialog textarea {
   min-height: 88px;
   max-height: 320px;
+  line-height: 1.6;
   resize: vertical;
-  overflow-y: auto;
+  overflow-y: hidden;
 }
 
 .dialog .grid {

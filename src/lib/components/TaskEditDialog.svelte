@@ -46,11 +46,16 @@
   let listId = $state('');
   let estimateText = $state('');
 
-  // メモ欄を内容に合わせて伸縮させる（上限付きでそれ以上は内部スクロール）
+  // メモ欄を内容に合わせて伸縮させる（上限付きでそれ以上は内部スクロール）。
+  // 収まっている間はスクロールバーを出さない
   function fitNotes() {
     if (!notesEl) return;
+    notesEl.style.overflowY = 'hidden';
     notesEl.style.height = 'auto';
-    notesEl.style.height = `${Math.min(notesEl.scrollHeight, 320)}px`;
+    const needed = notesEl.scrollHeight;
+    const max = 320;
+    notesEl.style.height = `${Math.min(needed, max)}px`;
+    notesEl.style.overflowY = needed > max ? 'auto' : 'hidden';
   }
 
   $effect(() => {

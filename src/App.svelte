@@ -23,7 +23,13 @@
     softDeleteTask,
     updateTask,
   } from './lib/db/taskRepository';
-  import { addDays, formatDuration, formatTodayLong, todayISO } from './lib/utils/date';
+  import {
+    addDays,
+    formatDuration,
+    formatTodayLong,
+    fromISODate,
+    todayISO,
+  } from './lib/utils/date';
   import { parseTaskInput, type ParsedTask } from './lib/utils/parseTask';
   import { sortTasks, type SortMode } from './lib/utils/sorting';
 
@@ -92,7 +98,12 @@
     void handleAddParam();
     void ensureFixedLists();
     void purgeExpiredTrash();
+    // リマインダー: 30秒ごとに予定時刻の到達をチェック
+    const reminderInterval = window.setInterval(() => checkReminders(), 30_000);
+    // デバッグ・自動テスト用
+    (window as unknown as Record<string, unknown>).__openmilk = { checkReminders };
     return () => {
+      window.clearInterval(reminderInterval);
       unsubscribeTasks();
       unsubscribeLists();
     };
@@ -368,6 +379,52 @@
     await deleteList(id);
     // 表示中のリストを消した場合は INBOX へ戻る
     if (selected === id) selected = 'inbox';
+  }
+
+  // --- リマインダー ---
+  function dueMomentMs(task: Task): number | null {
+    if (!task.due) return null;
+    const [h, m] = (task.dueTime ?? '09:00').split(':').map(Number);
+    const d = fromISODate(task.due);
+    d.setHours(h, m ?? 0, 0, 0);
+    return d.getTime();
+  }
+
+  function checkReminders() {
+    const now = Date.now();
+    let notified: Record<string, number> = {};
+    try {
+      notified = JSON.parse(localStorage.getItem('openmilk.notified') ?? '{}');
+    } catch {
+      notified = {};
+    }
+    for (const task of tasks) {
+      if (task.completedAt !== undefined || task.deleted || !task.remindMinutesBefore) continue;
+      const moment = dueMomentMs(task);
+      if (moment === null) continue;
+      const fireAt = moment - task.remindMinutesBefore * 60_000;
+      // 予定時刻を過ぎてから6時間以内のリマインダーを1回だけ通知する
+      if (fireAt > now || now - fireAt > 6 * 3_600_000) continue;
+      const key = `${task.id}:${task.due}:${task.dueTime ?? ''}`;
+      if (notified[key]) continue;
+      notified[key] = now;
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        const n = new Notification(t('reminderTitle'), {
+          body: task.title,
+          tag: task.id,
+          icon: '/icons/milk-192.png',
+        });
+        n.onclick = () => {
+          window.focus();
+          n.close();
+        };
+      }
+    }
+    try {
+      localStorage.setItem('openmilk.notified', JSON.stringify(notified));
+    } catch {
+      // 保存できない場合は次回も再度通知判定が行われる
+    }
   }
 
   async function saveEdit(id: string, edits: TaskEdits) {

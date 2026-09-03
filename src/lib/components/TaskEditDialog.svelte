@@ -4,6 +4,7 @@
     notes?: string;
     due?: string;
     dueTime?: string;
+    remindMinutesBefore?: number;
     priority?: 1 | 2 | 3;
     tags: string[];
     listId?: string;
@@ -41,6 +42,7 @@
   let notes = $state('');
   let due = $state('');
   let dueTime = $state('');
+  let remind = $state('');
   let priority = $state('');
   let tagsText = $state('');
   let listId = $state('');
@@ -65,6 +67,7 @@
       notes = task.notes ?? '';
       due = task.due ?? '';
       dueTime = task.dueTime ?? '';
+      remind = task.remindMinutesBefore ? String(task.remindMinutesBefore) : '';
       priority = task.priority ? String(task.priority) : '';
       tagsText = task.tags.join(' ');
       listId = task.listId ?? '';
@@ -80,6 +83,14 @@
     dialogEl?.close();
   }
 
+  // リマインダーを初めて設定するときに通知権限を要求する
+  function onRemindChange(value: string) {
+    remind = value;
+    if (value && typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      void Notification.requestPermission();
+    }
+  }
+
   function deleteTask() {
     ondelete(task.id);
     close();
@@ -92,6 +103,7 @@
       notes: notes.trim() || undefined,
       due: due || undefined,
       dueTime: dueTime || undefined,
+      remindMinutesBefore: remind ? Number(remind) : undefined,
       priority: priority ? (Number(priority) as 1 | 2 | 3) : undefined,
       tags: tagsText.split(/[\s,、，]+/).filter(Boolean),
       listId: listId || undefined,
@@ -120,7 +132,18 @@
       <label>
         {t('dueTimeLabel')}
         <!-- 10 分刻みのピッカー（細かい値はキーボード入力で可） -->
-        <input type="time" step="600" bind:value={dueTime} />
+        <input type="time" step="300" bind:value={dueTime} />
+      </label>
+      <label>
+        {t('remindLabel')}
+        <select value={remind} onchange={(e) => onRemindChange(e.currentTarget.value)}>
+          <option value="">{t('noneLabel')}</option>
+          <option value="5">{t('remind5m')}</option>
+          <option value="15">{t('remind15m')}</option>
+          <option value="30">{t('remind30m')}</option>
+          <option value="60">{t('remind1h')}</option>
+          <option value="1440">{t('remind1d')}</option>
+        </select>
       </label>
       <label>
         {t('priorityLabel')}

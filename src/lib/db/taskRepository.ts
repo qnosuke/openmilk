@@ -6,6 +6,7 @@ export interface NewTask {
   notes?: string;
   due?: string;
   dueTime?: string;
+  remindMinutesBefore?: number;
   priority?: 1 | 2 | 3;
   tags?: string[];
   estimateMinutes?: number;
@@ -24,6 +25,7 @@ export async function createTask(input: NewTask): Promise<Task> {
     notes: input.notes,
     due: input.due,
     dueTime: input.dueTime,
+    remindMinutesBefore: input.remindMinutesBefore,
     priority: input.priority,
     tags: input.tags ?? [],
     estimateMinutes: input.estimateMinutes,

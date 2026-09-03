@@ -315,11 +315,13 @@
   }
 
   const currentListName = $derived(
-    selected === 'all'
-      ? t('allLists')
-      : selected === 'inbox'
-        ? t('inbox')
-        : (lists.find((l) => l.id === selected)?.name ?? ''),
+    view === 'trash'
+      ? t('viewTrash')
+      : selected === 'all'
+        ? t('allLists')
+        : selected === 'inbox'
+          ? t('inbox')
+          : (lists.find((l) => l.id === selected)?.name ?? ''),
   );
 
   async function addTask(parsed: ParsedTask) {
@@ -470,6 +472,7 @@
     {dueFilter}
     search={searchQuery}
     {dataStatus}
+    trashActive={view === 'trash'}
     completedCount={completedCount}
     onselect={(id) => (selected = id)}
     oncreate={addList}
@@ -480,6 +483,7 @@
     onsetDueFilter={(filter) => (dueFilter = filter)}
     onselectTag={handleTagClick}
     ontoggleMute={toggleMutedTag}
+    onToggleTrash={toggleTrash}
     onDeleteCompleted={() => {
       deleteCompletedTasks().then((n) => flashDataStatus(t('deletedCompletedN', { n })));
     }}
@@ -516,15 +520,6 @@
           {t('viewCompleted')}
         </button>
       </div>
-      <button
-        class="trash-btn"
-        class:active={view === 'trash'}
-        aria-label={t('viewTrash')}
-        title={t('trashNote')}
-        onclick={toggleTrash}
-      >
-        🗑
-      </button>
       <label class="sort">
         <span>{t('sortLabel')}</span>
         <select bind:value={sortMode} aria-label={t('sortLabel')}>

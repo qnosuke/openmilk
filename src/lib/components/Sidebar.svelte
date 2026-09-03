@@ -19,6 +19,7 @@
     dueFilter,
     dataStatus,
     completedCount,
+    trashActive,
     search,
     onsearch,
     onselect,
@@ -29,6 +30,7 @@
     onsetDueFilter,
     onselectTag,
     ontoggleMute,
+    onToggleTrash,
     onDeleteCompleted,
   }: {
     lists: List[];
@@ -43,6 +45,8 @@
     activeTag: string | null;
     dueFilter: 'overdue' | 'today' | 'tomorrow' | 'week' | null;
     dataStatus: string;
+    /** ゴミ箱ビューが表示中か（⚙ のゴミ箱ボタンのアクティブ状態） */
+    trashActive: boolean;
     completedCount: number;
     search: string;
     onselect: (id: string) => void;
@@ -56,6 +60,8 @@
     /** タグクリックで絞り込みトグル（ミュート中タグならミュート解除） */
     onselectTag: (tag: string) => void;
     ontoggleMute: (tag: string) => void;
+    /** ⚙ のゴミ箱ボタン: ゴミ箱ビューを開閉する */
+    onToggleTrash: () => void;
     onDeleteCompleted: () => void;
   } = $props();
 
@@ -223,6 +229,13 @@
       <div class="data-actions">
         <button type="button" onclick={onexport}>{t('exportLabel')}</button>
         <button type="button" onclick={() => fileInput?.click()}>{t('importLabel')}</button>
+        <button
+          type="button"
+          class:active={trashActive}
+          onclick={() => onToggleTrash()}
+        >
+          {t('viewTrash')}
+        </button>
         <input
           type="file"
           accept="application/json,.json"

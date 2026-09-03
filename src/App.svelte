@@ -17,6 +17,8 @@
     observeLists,
     observeVisibleTasks,
     postponeTasks,
+    purgeExpiredTrash,
+    restoreTasks,
     setCompleted,
     softDeleteTask,
     updateTask,
@@ -39,7 +41,7 @@
   let searchQuery = $state('');
   let selectedIds = $state<string[]>([]);
   let mutedTags = $state<string[]>(loadMutedTags());
-  let view = $state<'active' | 'completed'>('active');
+  let view = $state<'active' | 'completed' | 'trash'>('active');
 
   const MUTED_KEY = 'openmilk.mutedTags';
 
@@ -89,6 +91,7 @@
     });
     void handleAddParam();
     void ensureFixedLists();
+    void purgeExpiredTrash();
     return () => {
       unsubscribeTasks();
       unsubscribeLists();
@@ -179,6 +182,8 @@
     const weekEnd = addDays(t0, 7);
     const q = searchQuery.trim().toLowerCase();
     const filtered = tasks.filter((task) => {
+      // ゴミ箱ビューでは削除済みだけ、他のビューでは削除済みを除く
+      if (view === 'trash' ? !task.deleted : task.deleted) return false;
       const inSelectedList =
         selected === 'all' || (selected === 'inbox' ? !task.listId : task.listId === selected);
       if (!inSelectedList) return false;
@@ -216,7 +221,7 @@
     let tomorrowCount = 0;
     let week = 0;
     for (const task of tasks) {
-      if (task.completedAt !== undefined || !task.due) continue;
+      if (task.completedAt !== undefined || task.deleted || !task.due) continue;
       if (task.due < t0) overdue += 1;
       if (task.due === t0) today += 1;
       if (task.due === tomorrow) tomorrowCount += 1;
@@ -230,7 +235,7 @@
   const counts = $derived.by(() => {
     const result: Record<string, number> = { all: 0, inbox: 0 };
     for (const task of tasks) {
-      if (task.completedAt !== undefined) continue;
+      if (task.completedAt !== undefined || task.deleted) continue;
       result.all += 1;
       if (task.listId) result[task.listId] = (result[task.listId] ?? 0) + 1;
       else result.inbox += 1;
@@ -244,6 +249,7 @@
       .filter(
         (task) =>
           task.completedAt === undefined &&
+          !task.deleted &&
           task.due !== undefined &&
           task.due <= todayISO() &&
           task.estimateMinutes,
@@ -255,7 +261,7 @@
   const tagCounts = $derived.by(() => {
     const map = new Map<string, number>();
     for (const task of tasks) {
-      if (task.completedAt !== undefined) continue;
+      if (task.completedAt !== undefined || task.deleted) continue;
       for (const tag of task.tags) map.set(tag, (map.get(tag) ?? 0) + 1);
     }
     return [...map.entries()]
@@ -327,6 +333,11 @@
   async function completeSelected() {
     const ids = [...selectedIds];
     await Promise.all(ids.map((id) => setCompleted(id, true)));
+    selectedIds = [];
+  }
+
+  async function restoreSelected() {
+    await restoreTasks([...selectedIds]);
     selectedIds = [];
   }
 
@@ -417,6 +428,13 @@
         >
           {t('viewCompleted')}
         </button>
+        <button
+          class:active={view === 'trash'}
+          onclick={() => (view = 'trash')}
+          aria-label={t('viewTrash')}
+        >
+          {t('viewTrash')}
+        </button>
       </div>
       <label class="sort">
         <span>{t('sortLabel')}</span>
@@ -440,7 +458,11 @@
           />
           {t('selectAll')}
         </label>
-        {#if selectedAllCompleted}
+        {#if view === 'trash'}
+          <button class="bulk-complete" onclick={restoreSelected}>
+            {t('restoreN', { n: selectedIds.length })}
+          </button>
+        {:else if selectedAllCompleted}
           <button class="bulk-complete" onclick={reopenSelected}>
             {t('reopenN', { n: selectedIds.length })}
           </button>

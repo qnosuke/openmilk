@@ -78,10 +78,4 @@
     {/each}
     {#if listName}<span class="list-chip">{listName}</span>{/if}
   </span>
-  <button
-    class="delete"
-    aria-label={t('ariaEdit', { title: task.title })}
-    title={t('deleteLabel')}
-    onclick={() => onedit(task.id)}>×</button
-  >
 </li>

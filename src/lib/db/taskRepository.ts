@@ -111,9 +111,38 @@ export async function deleteCompletedTasks(): Promise<number> {
   return count;
 }
 
-/** 全未削除タスク。表示順は UI 側 (sortTasks) で決める */
+/** ゴミ箱のタスクを INBOX に戻す（復元） */
+export async function restoreTasks(ids: string[]): Promise<void> {
+  await db.transaction('rw', db.tasks, async () => {
+    for (const id of ids) {
+      const task = await db.tasks.get(id);
+      if (!task) continue;
+      task.deleted = 0;
+      task.updatedAt = nowISO();
+      await db.tasks.put(task);
+    }
+  });
+}
+
+/** ゴミ箱で30日以上経過したタスクを物理削除する。戻り値は消した件数 */
+export async function purgeExpiredTrash(days = 30): Promise<number> {
+  const cutoff = Date.now() - days * 86_400_000;
+  let purged = 0;
+  await db.transaction('rw', db.tasks, async () => {
+    const all = await db.tasks.toArray();
+    for (const task of all) {
+      if (task.deleted === 1 && new Date(task.updatedAt).getTime() < cutoff) {
+        await db.tasks.delete(task.id);
+        purged += 1;
+      }
+    }
+  });
+  return purged;
+}
+
+/** 全タスク（削除済みも含む）。完了/ゴミ箱などの表示絞り込みは UI 側で行う */
 export async function fetchVisibleTasks(): Promise<Task[]> {
-  return db.tasks.where('deleted').equals(0).toArray();
+  return db.tasks.toArray();
 }
 
 /** UI 向けライブクエリ。DB が変わると自動で再通知される。戻り値の関数で購読解除 */

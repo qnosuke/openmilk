@@ -160,32 +160,37 @@
     <div class="tag-cloud" role="group" aria-label={t('tagsLabel')}>
       <div class="section-label">{t('tagsLabel')}</div>
       <div class="tag-cloud-chips">
-        {#each tagCounts as tag (tag.name)}
-          <span class="tag-pill">
-            <button
-              class="tag-chip"
-              class:muted={tag.muted}
-              onclick={() => onselectTag(tag.name)}
-            >
-              #{tag.name}<span class="tag-count">{tag.count}</span>
-            </button>
-            {#if !tag.muted}
-              <button
-                class="tag-mute"
-                title={t('muteTag', { tag: tag.name })}
-                aria-label={t('muteTag', { tag: tag.name })}
-                onclick={() => ontoggleMute(tag.name)}>⊘</button
-              >
-            {/if}
-          </span>
+        {#each tagCounts.filter((t) => !t.muted) as tag (tag.name)}
+          <button
+            class="tag-chip"
+            class:active={activeTag === tag.name}
+            onclick={() => onselectTag(tag.name)}
+          >
+            #{tag.name}<span class="tag-count">{tag.count}</span>
+          </button>
         {/each}
-        <button
-          class="tag-chip"
-          class:active={activeTag === UNTAGGED}
-          onclick={() => onselectTag(UNTAGGED)}
-        >
-          {t('untagged')}<span class="tag-count">{untaggedCount}</span>
-        </button>      </div>
+        {#if untaggedCount > 0 || activeTag === UNTAGGED}
+          <button
+            class="tag-chip"
+            class:active={activeTag === UNTAGGED}
+            onclick={() => onselectTag(UNTAGGED)}
+          >
+            {t('untagged')}<span class="tag-count">{untaggedCount}</span>
+          </button>
+        {/if}
+      </div>
+      {#if mutedTags.length > 0}
+        <div class="muted-note">
+          <span class="section-label">{t('hiddenTagsLabel')}</span>
+          {#each mutedTags as tag (tag)}
+            <button
+              class="tag-chip muted"
+              title={t('muteTag', { tag })}
+              onclick={() => onselectTag(tag)}>#{tag}</button
+            >
+          {/each}
+        </div>
+      {/if}
     </div>
   {/if}
 
@@ -231,6 +236,22 @@
       </div>
       {#if dataStatus}
         <p class="data-status" role="status">{dataStatus}</p>
+      {/if}
+      {#if tagCounts.length > 0}
+        <div class="hidden-tags">
+          <div class="section-label">{t('hiddenTagsLabel')}</div>
+          <div class="tag-cloud-chips">
+            {#each tagCounts as tag (tag.name)}
+              <button
+                class="tag-chip"
+                class:muted={tag.muted}
+                onclick={() => ontoggleMute(tag.name)}
+              >
+                {tag.muted ? '⊘' : ''}#{tag.name}<span class="tag-count">{tag.count}</span>
+              </button>
+            {/each}
+          </div>
+        </div>
       {/if}
       <button class="wipe" disabled={completedCount === 0 && !confirmWipe} onclick={wipeClicked}>
         {confirmWipe ? t('confirmDeleteN', { n: completedCount }) : `${t('deleteCompleted')} (${completedCount})`}

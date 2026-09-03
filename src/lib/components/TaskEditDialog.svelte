@@ -32,6 +32,7 @@
   } = $props();
 
   let dialogEl = $state<HTMLDialogElement>();
+  let notesEl = $state<HTMLTextAreaElement>();
   // ダイアログを開いている間に裏でタスクが更新されても入力中の内容を壊さないよう、
   // task.id が変わったときだけフォームを初期化する
   let initializedFor = $state('');
@@ -44,6 +45,13 @@
   let tagsText = $state('');
   let listId = $state('');
   let estimateText = $state('');
+
+  // メモ欄を内容に合わせて伸縮させる（上限付きでそれ以上は内部スクロール）
+  function fitNotes() {
+    if (!notesEl) return;
+    notesEl.style.height = 'auto';
+    notesEl.style.height = `${Math.min(notesEl.scrollHeight, 320)}px`;
+  }
 
   $effect(() => {
     if (initializedFor !== task.id) {
@@ -59,6 +67,7 @@
         ? formatDuration(task.estimateMinutes, i18n.locale)
         : '';
       dialogEl?.showModal();
+      queueMicrotask(() => fitNotes());
     }
   });
 
@@ -96,7 +105,7 @@
     </label>
     <label>
       {t('notesLabel')}
-      <textarea bind:value={notes} rows="3"></textarea>
+      <textarea bind:value={notes} bind:this={notesEl} oninput={fitNotes}></textarea>
     </label>
     <div class="grid">
       <label>

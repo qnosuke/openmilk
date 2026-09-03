@@ -868,7 +868,7 @@ h1 {
 /* --- 編集ダイアログ --- */
 
 dialog.dialog {
-  width: min(480px, 92vw);
+  width: min(640px, 92vw);
   padding: 20px;
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -909,8 +909,24 @@ dialog.dialog::backdrop {
   border-radius: 8px;
 }
 
+.dialog input,
+.dialog select,
 .dialog textarea {
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.dialog textarea {
+  min-height: 88px;
+  max-height: 320px;
   resize: vertical;
+  overflow-y: auto;
 }
 
 .dialog .grid {

@@ -243,19 +243,25 @@
     return result;
   });
 
-  /** 今日（+期限切れ）の未完了タスクの見積もり合計 */
-  const todayMinutes = $derived(
-    tasks
-      .filter(
-        (task) =>
-          task.completedAt === undefined &&
-          !task.deleted &&
-          task.due !== undefined &&
-          task.due <= todayISO() &&
-          task.estimateMinutes,
-      )
-      .reduce((sum, task) => sum + (task.estimateMinutes ?? 0), 0),
-  );
+  /**
+   * フッターの「今日の作業予定」: 今の表示コンテキスト（リスト・タグ絞り込み・
+   * ミュート）で見えている、今日期限の未完了タスクの見積もり合計
+   */
+  const todayMinutes = $derived.by(() => {
+    const t0 = todayISO();
+    return tasks
+      .filter((task) => {
+        if (task.completedAt !== undefined || task.deleted) return false;
+        if (selected !== 'all') {
+          const inList = selected === 'inbox' ? !task.listId : task.listId === selected;
+          if (!inList) return false;
+        }
+        if (tagFilter && !task.tags.includes(tagFilter)) return false;
+        if (mutedTags.some((tag) => task.tags.includes(tag))) return false;
+        return task.due !== undefined && task.due <= t0 && !!task.estimateMinutes;
+      })
+      .reduce((sum, task) => sum + (task.estimateMinutes ?? 0), 0);
+  });
 
   /** サイドバーのタグクラウド: 未完了タスクのタグ出現数（多い順） */
   const tagCounts = $derived.by(() => {

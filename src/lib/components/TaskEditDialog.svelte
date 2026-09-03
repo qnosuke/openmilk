@@ -9,6 +9,7 @@
     tags: string[];
     listId?: string;
     estimateMinutes?: number;
+    trackedMinutes?: number;
   }
 </script>
 
@@ -47,6 +48,7 @@
   let tagsText = $state('');
   let listId = $state('');
   let estimateText = $state('');
+  let trackedText = $state('');
 
   // メモ欄を内容に合わせて伸縮させる（上限付きでそれ以上は内部スクロール）。
   // 収まっている間はスクロールバーを出さない
@@ -73,6 +75,9 @@
       listId = task.listId ?? '';
       estimateText = task.estimateMinutes
         ? formatDuration(task.estimateMinutes, i18n.locale)
+        : '';
+      trackedText = task.trackedMinutes
+        ? formatDuration(task.trackedMinutes, i18n.locale)
         : '';
       dialogEl?.showModal();
       queueMicrotask(() => fitNotes());
@@ -108,6 +113,7 @@
       tags: tagsText.split(/[\s,、，]+/).filter(Boolean),
       listId: listId || undefined,
       estimateMinutes: estimateText.trim() ? parseEstimateMinutes(estimateText) : undefined,
+      trackedMinutes: trackedText.trim() ? parseEstimateMinutes(trackedText) : undefined,
     });
     close();
   }
@@ -167,6 +173,10 @@
       <label>
         {t('estimateLabel')}
         <input type="text" placeholder={t('estimatePlaceholder')} bind:value={estimateText} />
+      </label>
+      <label>
+        {t('trackedLabel')}
+        <input type="text" placeholder={t('estimatePlaceholder')} bind:value={trackedText} />
       </label>
     </div>
     <label>

@@ -21,6 +21,8 @@
     restoreTasks,
     setCompleted,
     softDeleteTask,
+    startTaskTimer,
+    stopTaskTimer,
     updateTask,
   } from './lib/db/taskRepository';
   import {
@@ -48,6 +50,7 @@
   let selectedIds = $state<string[]>([]);
   let mutedTags = $state<string[]>(loadMutedTags());
   let view = $state<'active' | 'completed' | 'trash'>('active');
+  let nowTick = $state(Date.now());
 
   const MUTED_KEY = 'openmilk.mutedTags';
 
@@ -370,6 +373,23 @@
     selectedIds = [];
   }
 
+  // 計測中の経過表示を1秒ごとに更新（計測中のみ動く）
+  const isAnyTracking = $derived(tasks.some((t) => t.timerStartedAt !== undefined));
+  $effect(() => {
+    if (!isAnyTracking) return;
+    const timer = window.setInterval(() => (nowTick = Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  });
+
+  /** 計測中タスクの経過（分）。見積もり比較とライブ表示に使う */
+  const tracking = $derived.by(() => {
+    const t = tasks.find((x) => x.timerStartedAt !== undefined);
+    if (!t) return undefined;
+    void nowTick;
+    const elapsed = (t.trackedMinutes ?? 0) + (Date.now() - new Date(t.timerStartedAt!).getTime()) / 60_000;
+    return { id: t.id, minutes: Math.max(0, elapsed) };
+  });
+
   const selectedAllCompleted = $derived(
     selectedIds.length > 0 &&
       selectedIds.every((id) => tasks.find((t) => t.id === id)?.completedAt !== undefined),
@@ -557,12 +577,15 @@
           activeTag={tagFilter}
           {mutedTags}
           selected={selectedIds.includes(task.id)}
+          liveMinutes={tracking?.id === task.id ? tracking.minutes : undefined}
           ontoggle={(id, checked) =>
             (selectedIds = checked
               ? [...selectedIds, id]
               : selectedIds.filter((sid) => sid !== id))}
           onedit={(id) => (editingId = id)}
           ontag={(tag) => (tagFilter = tagFilter === tag ? null : tag)}
+          onstartTimer={startTaskTimer}
+          onstopTimer={stopTaskTimer}
         />
         {/each}
       </ul>

@@ -59,6 +59,12 @@ export async function setCompleted(id: string, completed: boolean): Promise<void
   await db.transaction('rw', db.tasks, async () => {
     const task = await db.tasks.get(id);
     if (!task) return;
+    if (completed && task.timerStartedAt) {
+      // 計測中に完了した場合は経過を実績に確定してから完了にする
+      stopTimerInternal(task, nowISO());
+    } else if (!completed) {
+      task.timerStartedAt = undefined;
+    }
     task.completedAt = completed ? nowISO() : undefined;
     task.updatedAt = nowISO();
     await db.tasks.put(task);
@@ -94,6 +100,44 @@ function addDaysISO(iso: string, days: number): string {
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
+}
+
+/** 計測中の経過を trackedMinutes に確定させ、timerStartedAt を空にする */
+function stopTimerInternal(task: Task, now: string): void {
+  if (!task.timerStartedAt) return;
+  const elapsedMin = (Date.now() - new Date(task.timerStartedAt).getTime()) / 60_000;
+  task.trackedMinutes = Math.round(((task.trackedMinutes ?? 0) + Math.max(0, elapsedMin)) * 10) / 10;
+  task.timerStartedAt = undefined;
+  task.updatedAt = now;
+}
+
+/** タスクの計測を開始する。他の計測中タスクがあれば自動で停止する（同時計測は不可） */
+export async function startTaskTimer(id: string): Promise<void> {
+  await db.transaction('rw', db.tasks, async () => {
+    const now = nowISO();
+    const all = await db.tasks.toArray();
+    for (const t of all) {
+      if (t.timerStartedAt && t.id !== id) {
+        stopTimerInternal(t, now);
+        await db.tasks.put(t);
+      }
+    }
+    const task = await db.tasks.get(id);
+    if (!task || task.timerStartedAt || task.completedAt !== undefined) return;
+    task.timerStartedAt = now;
+    task.updatedAt = now;
+    await db.tasks.put(task);
+  });
+}
+
+/** タスクの計測を停止し、経過を実績に加算する */
+export async function stopTaskTimer(id: string): Promise<void> {
+  await db.transaction('rw', db.tasks, async () => {
+    const task = await db.tasks.get(id);
+    if (!task?.timerStartedAt) return;
+    stopTimerInternal(task, nowISO());
+    await db.tasks.put(task);
+  });
 }
 
 /** 完了済みタスクを論理削除する（一括消し）。戻り値は処理件数 */

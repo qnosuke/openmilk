@@ -9,9 +9,12 @@
     activeTag,
     mutedTags,
     selected,
+    liveMinutes,
     ontoggle,
     onedit,
     ontag,
+    onstartTimer,
+    onstopTimer,
   }: {
     task: Task;
     /** 「すべて」表示時に所属リスト名を出す（INBOX タスクでは undefined） */
@@ -22,10 +25,14 @@
     mutedTags?: string[];
     /** 一括バーで選択中か */
     selected?: boolean;
+    /** 計測中の経過（分）。このタスクが計測中のときだけ渡る */
+    liveMinutes?: number;
     /** チェックボックスは「一括操作への選択」。完了・延期はバーから実行する */
     ontoggle: (id: string, selected: boolean) => void;
     onedit: (id: string) => void;
     ontag: (tag: string) => void;
+    onstartTimer: (id: string) => void;
+    onstopTimer: (id: string) => void;
   } = $props();
 
   const overdue = $derived(
@@ -33,9 +40,18 @@
   );
   const visibleTags = $derived(task.tags.filter((tag) => !(mutedTags ?? []).includes(tag)));
   const notePreview = $derived((task.notes ?? '').split('\n')[0].trim().slice(0, 80));
+  const isTracking = $derived(liveMinutes !== undefined);
+  const overEstimate = $derived(
+    !!task.estimateMinutes && liveMinutes !== undefined && liveMinutes > task.estimateMinutes,
+  );
 </script>
 
-<li class="row" class:done={task.completedAt !== undefined} class:picked={selected}>
+<li
+  class="row"
+  class:done={task.completedAt !== undefined}
+  class:picked={selected}
+  class:tracking={isTracking}
+>
   <input
     type="checkbox"
     checked={!!selected}
@@ -46,6 +62,23 @@
     }
     onchange={(e) => ontoggle(task.id, e.currentTarget.checked)}
   />
+  {#if task.completedAt === undefined}
+    {#if isTracking}
+      <button
+        class="timer-btn stop"
+        aria-label={t('ariaTimerStop', { title: task.title })}
+        title={t('ariaTimerStop', { title: task.title })}
+        onclick={() => onstopTimer(task.id)}>⏸</button
+      >
+    {:else}
+      <button
+        class="timer-btn"
+        aria-label={t('ariaTimerStart', { title: task.title })}
+        title={t('ariaTimerStart', { title: task.title })}
+        onclick={() => onstartTimer(task.id)}>▶</button
+      >
+    {/if}
+  {/if}
   <div class="title-cell">
     <button
       class="link-title"
@@ -62,6 +95,18 @@
     {#if task.priority}<span class="prio p{task.priority}">!{task.priority}</span>{/if}
     {#if task.estimateMinutes}
       <span class="estimate">{formatDuration(task.estimateMinutes, i18n.locale)}</span>
+    {/if}
+    {#if isTracking && liveMinutes !== undefined}
+      <span class="live-chip" class:over={overEstimate}>
+        {formatDuration(Math.max(1, Math.round(liveMinutes)), i18n.locale)}
+        {#if task.estimateMinutes}
+          / {formatDuration(task.estimateMinutes, i18n.locale)}
+        {/if}
+      </span>
+    {:else if task.trackedMinutes}
+      <span class="estimate">
+        {t('trackedTotal', { d: formatDuration(task.trackedMinutes, i18n.locale) })}
+      </span>
     {/if}
     {#if task.due}
       <span class="due" class:overdue>

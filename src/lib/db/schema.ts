@@ -18,6 +18,10 @@ export interface Task {
   tags: string[];
   /** 見積もり（分） */
   estimateMinutes?: number;
+  /** 確定済みの実績時間（分）。計測中の経過は timerStartedAt から計算 */
+  trackedMinutes?: number;
+  /** 計測開始時刻（ISO 8601）。計測中はこの時刻からの経過を実績に加算する */
+  timerStartedAt?: string;
   /** 所属リスト。undefined は INBOX */
   listId?: string;
   /** 繰り返しルール（将来拡張） */

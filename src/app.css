@@ -722,6 +722,51 @@ h1 {
   text-overflow: ellipsis;
 }
 
+/* --- 計測タイマー --- */
+
+.timer-btn {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--muted);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.timer-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.timer-btn.stop {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.row.tracking {
+  border-color: var(--accent);
+}
+
+.live-chip {
+  padding: 1px 7px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  background: rgb(47 111 237 / 10%);
+  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+}
+
+.live-chip.over {
+  color: var(--overdue);
+  background: rgb(214 69 69 / 10%);
+}
+
 .row.picked {
   background: rgb(47 111 237 / 7%);
   border-color: var(--accent);

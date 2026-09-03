@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import QuickAdd from './lib/components/QuickAdd.svelte';
-  import Sidebar from './lib/components/Sidebar.svelte';
+  import Sidebar, { UNTAGGED } from './lib/components/Sidebar.svelte';
   import TaskEditDialog, { type TaskEdits } from './lib/components/TaskEditDialog.svelte';
   import TaskRow from './lib/components/TaskRow.svelte';
   import { i18n, t } from './lib/i18n.svelte';
@@ -9,12 +9,14 @@
   import {
     createList,
     createTask,
+    deleteCompletedTasks,
     deleteList,
     ensureFixedLists,
     exportAll,
     importBackup,
     observeLists,
     observeVisibleTasks,
+    postponeTasks,
     setCompleted,
     softDeleteTask,
     updateTask,
@@ -35,8 +37,28 @@
   let dueFilter = $state<'overdue' | 'today' | 'tomorrow' | 'week' | null>(null);
   let tagFilter = $state<string | null>(null);
   let searchQuery = $state('');
-  let selectMode = $state(false);
   let selectedIds = $state<string[]>([]);
+  let mutedTags = $state<string[]>(loadMutedTags());
+
+  const MUTED_KEY = 'openmilk.mutedTags';
+
+  function loadMutedTags(): string[] {
+    try {
+      const saved = JSON.parse(localStorage.getItem(MUTED_KEY) ?? '[]');
+      if (Array.isArray(saved)) return saved.filter((s) => typeof s === 'string');
+    } catch {
+      // localStorage が使えない環境では非表示タグなし
+    }
+    return [];
+  }
+
+  $effect(() => {
+    try {
+      localStorage.setItem(MUTED_KEY, JSON.stringify(mutedTags));
+    } catch {
+      // 保存できなくても動作には影響しない
+    }
+  });
 
   function loadSortMode(): SortMode {
     try {
@@ -159,7 +181,11 @@
       const inSelectedList =
         selected === 'all' || (selected === 'inbox' ? !task.listId : task.listId === selected);
       if (!inSelectedList) return false;
-      if (tagFilter !== null && !task.tags.includes(tagFilter)) return false;
+      if (tagFilter === UNTAGGED) {
+        if (task.tags.length > 0) return false;
+      } else if (tagFilter !== null && !task.tags.includes(tagFilter)) return false;
+      // 非表示タグのついたタスクは全部のビューから消える
+      if (task.tags.some((tag) => mutedTags.includes(tag))) return false;
       if (q) {
         const haystack = `${task.title}\n${task.notes ?? ''}\n${task.tags.join(' ')}`.toLowerCase();
         if (!haystack.includes(q)) return false;
@@ -228,9 +254,30 @@
       for (const tag of task.tags) map.set(tag, (map.get(tag) ?? 0) + 1);
     }
     return [...map.entries()]
-      .map(([name, count]) => ({ name, count }))
+      .map(([name, count]) => ({ name, count, muted: mutedTags.includes(name) }))
       .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
   });
+
+  const untaggedCount = $derived(
+    tasks.filter((t) => t.completedAt === undefined && t.tags.length === 0).length,
+  );
+
+  const completedCount = $derived(
+    tasks.filter((t) => t.completedAt !== undefined && !t.deleted).length,
+  );
+
+  function toggleMutedTag(tag: string) {
+    mutedTags = mutedTags.includes(tag) ? mutedTags.filter((t) => t !== tag) : [...mutedTags, tag];
+  }
+
+  /** タグクラウドのクリック: 非表示中タグならミュート解除、それ以外は絞り込みトグル */
+  function handleTagClick(tag: string) {
+    if (mutedTags.includes(tag)) {
+      toggleMutedTag(tag);
+      return;
+    }
+    tagFilter = tagFilter === tag ? null : tag;
+  }
 
   const currentListName = $derived(
     selected === 'all'
@@ -241,8 +288,14 @@
   );
 
   async function addTask(parsed: ParsedTask) {
+    // タグ絞り込み中の追加はそのタグを自動で付ける（タグなし絞り込み中は付けない）
+    const tags =
+      tagFilter && tagFilter !== UNTAGGED && !parsed.tags.includes(tagFilter)
+        ? [...parsed.tags, tagFilter]
+        : parsed.tags;
     await createTask({
       ...parsed,
+      tags,
       // 「すべて」表示中に追加したものは INBOX へ
       listId: selected === 'all' || selected === 'inbox' ? undefined : selected,
     });
@@ -262,8 +315,7 @@
     selected = list.id;
   }
 
-  function exitSelectMode() {
-    selectMode = false;
+  function clearSelection() {
     selectedIds = [];
   }
 
@@ -272,6 +324,23 @@
     await Promise.all(ids.map((id) => setCompleted(id, true)));
     selectedIds = [];
   }
+
+  async function reopenSelected() {
+    const ids = [...selectedIds];
+    await Promise.all(ids.map((id) => setCompleted(id, false)));
+    selectedIds = [];
+  }
+
+  async function postponeSelected() {
+    const ids = [...selectedIds];
+    await postponeTasks(ids);
+    selectedIds = [];
+  }
+
+  const selectedAllCompleted = $derived(
+    selectedIds.length > 0 &&
+      selectedIds.every((id) => tasks.find((t) => t.id === id)?.completedAt !== undefined),
+  );
 
   async function removeList(id: string) {
     await deleteList(id);
@@ -292,10 +361,13 @@
     {counts}
     {rangeCounts}
     {tagCounts}
+    {mutedTags}
+    {untaggedCount}
     activeTag={tagFilter}
     {dueFilter}
     search={searchQuery}
     {dataStatus}
+    completedCount={completedCount}
     onselect={(id) => (selected = id)}
     oncreate={addList}
     ondelete={removeList}
@@ -303,7 +375,11 @@
     onimportFile={importData}
     onsearch={(query) => (searchQuery = query)}
     onsetDueFilter={(filter) => (dueFilter = filter)}
-    onselectTag={(tag) => (tagFilter = tagFilter === tag ? null : tag)}
+    onselectTag={handleTagClick}
+    ontoggleMute={toggleMutedTag}
+    onDeleteCompleted={() => {
+      deleteCompletedTasks().then((n) => flashDataStatus(t('deletedCompletedN', { n })));
+    }}
   />
 
   <main>
@@ -321,16 +397,6 @@
           #{tagFilter} ✕
         </button>
       {/if}
-      <button
-        class="select-toggle"
-        class:on={selectMode}
-        onclick={() => {
-          selectMode = !selectMode;
-          selectedIds = [];
-        }}
-      >
-        {t('selectTasks')}
-      </button>
       <label class="sort">
         <span>{t('sortLabel')}</span>
         <select bind:value={sortMode} aria-label={t('sortLabel')}>
@@ -343,7 +409,7 @@
 
     <QuickAdd onadd={addTask} />
 
-    {#if selectMode}
+    {#if selectedIds.length > 0}
       <div class="bulk-bar">
         <label class="bulk-select-all">
           <input
@@ -353,10 +419,19 @@
           />
           {t('selectAll')}
         </label>
-        <button class="bulk-complete" disabled={selectedIds.length === 0} onclick={completeSelected}>
-          {t('completeN', { n: selectedIds.length })}
-        </button>
-        <button class="bulk-cancel" onclick={exitSelectMode}>{t('cancel')}</button>
+        {#if selectedAllCompleted}
+          <button class="bulk-complete" onclick={reopenSelected}>
+            {t('reopenN', { n: selectedIds.length })}
+          </button>
+        {:else}
+          <button class="bulk-complete" onclick={completeSelected}>
+            {t('completeN', { n: selectedIds.length })}
+          </button>
+          <button class="bulk-postpone" onclick={postponeSelected}>
+            {t('postponeN', { n: selectedIds.length })}
+          </button>
+        {/if}
+        <button class="bulk-cancel" onclick={clearSelection}>{t('clearSelection')}</button>
       </div>
     {/if}
 
@@ -374,16 +449,14 @@
           {task}
           listName={lists.find((l) => l.id === task.listId)?.name}
           activeTag={tagFilter}
-          selectMode={selectMode}
+          {mutedTags}
           selected={selectedIds.includes(task.id)}
-          ontoggle={(id, completed) => setCompleted(id, completed)}
-          ondelete={softDeleteTask}
-          onedit={(id) => (editingId = id)}
-          ontag={(tag) => (tagFilter = tagFilter === tag ? null : tag)}
-          onselect={(id, checked) =>
+          ontoggle={(id, checked) =>
             (selectedIds = checked
               ? [...selectedIds, id]
               : selectedIds.filter((sid) => sid !== id))}
+          onedit={(id) => (editingId = id)}
+          ontag={(tag) => (tagFilter = tagFilter === tag ? null : tag)}
         />
         {/each}
       </ul>
@@ -402,6 +475,7 @@
     task={editingTask}
     {lists}
     onsave={saveEdit}
+    ondelete={softDeleteTask}
     onclose={() => (editingId = null)}
   />
 {/if}

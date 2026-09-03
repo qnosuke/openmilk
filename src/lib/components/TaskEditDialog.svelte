@@ -21,11 +21,13 @@
     task,
     lists,
     onsave,
+    ondelete,
     onclose,
   }: {
     task: Task;
     lists: List[];
     onsave: (id: string, edits: TaskEdits) => void;
+    ondelete: (id: string) => void;
     onclose: () => void;
   } = $props();
 
@@ -62,6 +64,11 @@
 
   function close() {
     dialogEl?.close();
+  }
+
+  function deleteTask() {
+    ondelete(task.id);
+    close();
   }
 
   function save() {
@@ -129,6 +136,9 @@
       <input type="text" placeholder={t('tagsPlaceholder')} bind:value={tagsText} />
     </label>
     <div class="actions">
+      <!-- 破壊的操作は左端のグレーに（誤タップ防止） -->
+      <button type="button" class="delete-left" onclick={deleteTask}>{t('deleteLabel')}</button>
+      <span class="spacer"></span>
       <button type="button" onclick={close}>{t('cancel')}</button>
       <button type="submit" disabled={!title.trim()}>{t('save')}</button>
     </div>

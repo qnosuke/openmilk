@@ -67,6 +67,50 @@ export async function softDeleteTask(id: string): Promise<void> {
   await updateTask(id, { deleted: 1 });
 }
 
+/** 選択したタスクを1日延期する。期限が無いものは「明日」になる */
+export async function postponeTasks(ids: string[], days = 1): Promise<void> {
+  await db.transaction('rw', db.tasks, async () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + days);
+    const tomorrowISO = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
+    for (const id of ids) {
+      const task = await db.tasks.get(id);
+      if (!task) continue;
+      task.due = task.due
+        ? addDaysISO(task.due, days)
+        : tomorrowISO;
+      task.updatedAt = nowISO();
+      await db.tasks.put(task);
+    }
+  });
+}
+
+function addDaysISO(iso: string, days: number): string {
+  const d = new Date(iso + 'T00:00:00');
+  d.setDate(d.getDate() + days);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/** 完了済みタスクを論理削除する（一括消し）。戻り値は処理件数 */
+export async function deleteCompletedTasks(): Promise<number> {
+  let count = 0;
+  await db.transaction('rw', db.tasks, async () => {
+    const all = await db.tasks.toArray();
+    for (const task of all) {
+      if (task.completedAt !== undefined && !task.deleted) {
+        task.deleted = 1;
+        task.updatedAt = nowISO();
+        await db.tasks.put(task);
+        count += 1;
+      }
+    }
+  });
+  return count;
+}
+
 /** 全未削除タスク。表示順は UI 側 (sortTasks) で決める */
 export async function fetchVisibleTasks(): Promise<Task[]> {
   return db.tasks.where('deleted').equals(0).toArray();

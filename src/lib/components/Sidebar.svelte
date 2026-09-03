@@ -1,3 +1,8 @@
+<script module lang="ts">
+  /** タグなし絞り込みのセンチネル値（tagFilter に渡す） */
+  export const UNTAGGED = '__untagged__';
+</script>
+
 <script lang="ts">
   import { LOCALE_NAMES, i18n, locales, setLocale, t, type Locale } from '../i18n.svelte';
   import type { List } from '../db/schema';
@@ -8,9 +13,12 @@
     counts,
     rangeCounts,
     tagCounts,
+    mutedTags,
+    untaggedCount,
     activeTag,
     dueFilter,
     dataStatus,
+    completedCount,
     search,
     onsearch,
     onselect,
@@ -20,17 +28,22 @@
     onimportFile,
     onsetDueFilter,
     onselectTag,
+    ontoggleMute,
+    onDeleteCompleted,
   }: {
     lists: List[];
     selected: string;
     counts: Record<string, number>;
     /** 今日/明日/1週間/期限切れの未完了件数 */
     rangeCounts: { overdue: number; today: number; tomorrow: number; week: number };
-    /** 未完了タスクのタグ出現数（多い順） */
-    tagCounts: { name: string; count: number }[];
+    /** 未完了タスクのタグ出現数（多い順、ミュート状態つき） */
+    tagCounts: { name: string; count: number; muted: boolean }[];
+    mutedTags: string[];
+    untaggedCount: number;
     activeTag: string | null;
     dueFilter: 'overdue' | 'today' | 'tomorrow' | 'week' | null;
     dataStatus: string;
+    completedCount: number;
     search: string;
     onselect: (id: string) => void;
     oncreate: (name: string) => void;
@@ -40,13 +53,17 @@
     onsearch: (query: string) => void;
     /** 同じボタンを押すと解除される（null が渡る） */
     onsetDueFilter: (filter: 'overdue' | 'today' | 'tomorrow' | 'week' | null) => void;
-    /** タグクリックで絞り込みトグル */
+    /** タグクリックで絞り込みトグル（ミュート中タグならミュート解除） */
     onselectTag: (tag: string) => void;
+    ontoggleMute: (tag: string) => void;
+    onDeleteCompleted: () => void;
   } = $props();
 
   let fileInput = $state<HTMLInputElement>();
   let detailsEl = $state<HTMLDetailsElement>();
   let name = $state('');
+  let confirmWipe = $state(false);
+  let wipeTimer: number | undefined;
 
   function submit(event?: SubmitEvent) {
     event?.preventDefault();
@@ -63,6 +80,18 @@
       event.preventDefault();
       submit();
     }
+  }
+
+  // 完了タスクの一括削除は2段階確認（4秒で戻る）
+  function wipeClicked() {
+    if (!confirmWipe) {
+      confirmWipe = true;
+      window.setTimeout(() => (confirmWipe = false), 4000);
+      return;
+    }
+    window.clearTimeout(wipeTimer);
+    confirmWipe = false;
+    onDeleteCompleted();
   }
 
   // ウィンドウの外をクリックしたら設定を閉じる
@@ -132,15 +161,31 @@
       <div class="section-label">{t('tagsLabel')}</div>
       <div class="tag-cloud-chips">
         {#each tagCounts as tag (tag.name)}
-          <button
-            class="tag-chip"
-            class:active={activeTag === tag.name}
-            onclick={() => onselectTag(tag.name)}
-          >
-            #{tag.name}<span class="tag-count">{tag.count}</span>
-          </button>
+          <span class="tag-pill">
+            <button
+              class="tag-chip"
+              class:muted={tag.muted}
+              onclick={() => onselectTag(tag.name)}
+            >
+              #{tag.name}<span class="tag-count">{tag.count}</span>
+            </button>
+            {#if !tag.muted}
+              <button
+                class="tag-mute"
+                title={t('muteTag', { tag: tag.name })}
+                aria-label={t('muteTag', { tag: tag.name })}
+                onclick={() => ontoggleMute(tag.name)}>⊘</button
+              >
+            {/if}
+          </span>
         {/each}
-      </div>
+        <button
+          class="tag-chip"
+          class:active={activeTag === UNTAGGED}
+          onclick={() => onselectTag(UNTAGGED)}
+        >
+          {t('untagged')}<span class="tag-count">{untaggedCount}</span>
+        </button>      </div>
     </div>
   {/if}
 
@@ -187,6 +232,9 @@
       {#if dataStatus}
         <p class="data-status" role="status">{dataStatus}</p>
       {/if}
+      <button class="wipe" disabled={completedCount === 0 && !confirmWipe} onclick={wipeClicked}>
+        {confirmWipe ? t('confirmDeleteN', { n: completedCount }) : `${t('deleteCompleted')} (${completedCount})`}
+      </button>
       <label class="lang">
         <span>{t('language')}</span>
         <select

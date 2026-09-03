@@ -7,72 +7,68 @@
     task,
     listName,
     activeTag,
-    selectMode,
+    mutedTags,
     selected,
     ontoggle,
-    ondelete,
     onedit,
     ontag,
-    onselect,
   }: {
     task: Task;
     /** 「すべて」表示時に所属リスト名を出す（INBOX タスクでは undefined） */
     listName?: string;
     /** タグ絞り込み中のタグ（一致するチップを強調） */
     activeTag?: string | null;
-    /** 一括完了モード中はチェックボックスが「選択」として働く */
-    selectMode?: boolean;
+    /** 非表示にするタグ（行のチップからも消える） */
+    mutedTags?: string[];
+    /** 一括バーで選択中か */
     selected?: boolean;
-    ontoggle: (id: string, completed: boolean) => void;
-    ondelete: (id: string) => void;
+    /** チェックボックスは「一括操作への選択」。完了・延期はバーから実行する */
+    ontoggle: (id: string, selected: boolean) => void;
     onedit: (id: string) => void;
-    /** タグチップをクリック → そのタグで絞り込む（もう一度で解除） */
     ontag: (tag: string) => void;
-    onselect: (id: string, selected: boolean) => void;
   } = $props();
 
   const overdue = $derived(
     task.completedAt === undefined && task.due !== undefined && daysFromToday(task.due) < 0,
   );
+  const visibleTags = $derived(task.tags.filter((tag) => !(mutedTags ?? []).includes(tag)));
+  const notePreview = $derived((task.notes ?? '').split('\n')[0].trim().slice(0, 80));
 </script>
 
-<li class="row" class:done={task.completedAt !== undefined}>
+<li class="row" class:done={task.completedAt !== undefined} class:picked={selected}>
   <input
     type="checkbox"
-    checked={selectMode ? !!selected : task.completedAt !== undefined}
+    checked={!!selected}
     aria-label={
-      selectMode
-        ? selected
-          ? t('ariaUnselectTask', { title: task.title })
-          : t('ariaSelectTask', { title: task.title })
-        : task.completedAt !== undefined
-          ? t('ariaReopen', { title: task.title })
-          : t('ariaComplete', { title: task.title })
+      selected
+        ? t('ariaUnselectTask', { title: task.title })
+        : t('ariaSelectTask', { title: task.title })
     }
-    onchange={(e) =>
-      selectMode ? onselect(task.id, e.currentTarget.checked) : ontoggle(task.id, e.currentTarget.checked)}
+    onchange={(e) => ontoggle(task.id, e.currentTarget.checked)}
   />
-  <button
-    class="link-title"
-    aria-label={t('ariaEdit', { title: task.title })}
-    onclick={() => onedit(task.id)}
-  >
-    {task.title}
-  </button>
+  <div class="title-cell">
+    <button
+      class="link-title"
+      aria-label={t('ariaEdit', { title: task.title })}
+      onclick={() => onedit(task.id)}
+    >
+      {task.title}
+    </button>
+    {#if notePreview}
+      <span class="note-preview" title={task.notes}>📝 {notePreview}</span>
+    {/if}
+  </div>
   <span class="meta">
     {#if task.priority}<span class="prio p{task.priority}">!{task.priority}</span>{/if}
     {#if task.estimateMinutes}
       <span class="estimate">{formatDuration(task.estimateMinutes, i18n.locale)}</span>
-    {/if}
-    {#if task.notes}
-      <span class="note-chip" title={task.notes} aria-hidden="true">📝</span>
     {/if}
     {#if task.due}
       <span class="due" class:overdue>
         {formatDue(task.due, i18n.locale)}{task.dueTime ? ` ${task.dueTime}` : ''}
       </span>
     {/if}
-    {#each task.tags as tag}
+    {#each visibleTags as tag}
       <button
         class="tag tag-btn"
         class:active={activeTag === tag}
@@ -84,7 +80,8 @@
   </span>
   <button
     class="delete"
-    aria-label={t('ariaDelete', { title: task.title })}
-    onclick={() => ondelete(task.id)}>×</button
+    aria-label={t('ariaEdit', { title: task.title })}
+    title={t('deleteLabel')}
+    onclick={() => onedit(task.id)}>×</button
   >
 </li>

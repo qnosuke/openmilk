@@ -114,7 +114,8 @@
 </script>
 
 <dialog bind:this={dialogEl} class="dialog" aria-label={t('dialogAria')} onclose={onclose}>
-  <form onsubmit={(e) => { e.preventDefault(); save(); }}>
+  <!-- novalidate: 時刻の手入力（5分刻み以外）も保存できるようにする -->
+  <form novalidate onsubmit={(e) => { e.preventDefault(); save(); }}>
     <h2>{t('editTask')}</h2>
     <label>
       {t('titleLabel')}

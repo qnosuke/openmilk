@@ -612,6 +612,35 @@ h1 {
   background: var(--accent);
 }
 
+.trash-btn {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  font-size: 13px;
+  color: var(--muted);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.trash-btn:hover {
+  color: var(--overdue);
+  border-color: var(--overdue);
+}
+
+.trash-btn.active {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.trash-note {
+  margin: 10px 2px 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
 .quick-add {
   display: flex;
   gap: 8px;

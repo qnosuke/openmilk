@@ -52,6 +52,10 @@
   let view = $state<'active' | 'completed' | 'trash'>('active');
   let nowTick = $state(Date.now());
 
+  function toggleTrash() {
+    view = view === 'trash' ? 'active' : 'trash';
+  }
+
   const MUTED_KEY = 'openmilk.mutedTags';
 
   function loadMutedTags(): string[] {
@@ -511,14 +515,16 @@
         >
           {t('viewCompleted')}
         </button>
-        <button
-          class:active={view === 'trash'}
-          onclick={() => (view = 'trash')}
-          aria-label={t('viewTrash')}
-        >
-          {t('viewTrash')}
-        </button>
       </div>
+      <button
+        class="trash-btn"
+        class:active={view === 'trash'}
+        aria-label={t('viewTrash')}
+        title={t('trashNote')}
+        onclick={toggleTrash}
+      >
+        🗑
+      </button>
       <label class="sort">
         <span>{t('sortLabel')}</span>
         <select bind:value={sortMode} aria-label={t('sortLabel')}>
@@ -559,6 +565,10 @@
         {/if}
         <button class="bulk-cancel" onclick={clearSelection}>{t('clearSelection')}</button>
       </div>
+    {/if}
+
+    {#if view === 'trash'}
+      <p class="trash-note">{t('trashNote')}</p>
     {/if}
 
     {#if !loaded}

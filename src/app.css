@@ -943,8 +943,9 @@ h1 {
 
 dialog.dialog {
   width: min(640px, 92vw);
-  padding: 20px;
-  border: 1px solid var(--border);
+  padding: 0;
+  background: transparent;
+  border: none;
   border-radius: 12px;
 }
 
@@ -956,6 +957,10 @@ dialog.dialog::backdrop {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  padding: 20px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
 }
 
 .dialog h2 {

@@ -119,7 +119,16 @@
   }
 </script>
 
-<dialog bind:this={dialogEl} class="dialog" aria-label={t('dialogAria')} onclose={onclose}>
+<dialog
+  bind:this={dialogEl}
+  class="dialog"
+  aria-label={t('dialogAria')}
+  onclose={onclose}
+  onclick={(e) => {
+    // 背景クリック（ダイアログ自体がクリック元）のときだけ閉じる
+    if (e.target === dialogEl) onclose();
+  }}
+>
   <!-- novalidate: 時刻の手入力（5分刻み以外）も保存できるようにする -->
   <form novalidate onsubmit={(e) => { e.preventDefault(); save(); }}>
     <h2>{t('editTask')}</h2>

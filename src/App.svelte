@@ -39,6 +39,7 @@
   let searchQuery = $state('');
   let selectedIds = $state<string[]>([]);
   let mutedTags = $state<string[]>(loadMutedTags());
+  let view = $state<'active' | 'completed'>('active');
 
   const MUTED_KEY = 'openmilk.mutedTags';
 
@@ -186,6 +187,10 @@
       } else if (tagFilter !== null && !task.tags.includes(tagFilter)) return false;
       // 非表示タグのついたタスクは全部のビューから消える
       if (task.tags.some((tag) => mutedTags.includes(tag))) return false;
+      // 通常ビューは未完了だけ。完了済みは「完了」タブで見る
+      if (view === 'active' ? task.completedAt !== undefined : task.completedAt === undefined) {
+        return false;
+      }
       if (q) {
         const haystack = `${task.title}\n${task.notes ?? ''}\n${task.tags.join(' ')}`.toLowerCase();
         if (!haystack.includes(q)) return false;
@@ -397,6 +402,22 @@
           #{tagFilter} ✕
         </button>
       {/if}
+      <div class="view-toggle" role="group" aria-label={t('viewAria')}>
+        <button
+          class:active={view === 'active'}
+          onclick={() => (view = 'active')}
+          aria-label={t('viewTasks')}
+        >
+          {t('viewTasks')}
+        </button>
+        <button
+          class:active={view === 'completed'}
+          onclick={() => (view = 'completed')}
+          aria-label={t('viewCompleted')}
+        >
+          {t('viewCompleted')}
+        </button>
+      </div>
       <label class="sort">
         <span>{t('sortLabel')}</span>
         <select bind:value={sortMode} aria-label={t('sortLabel')}>

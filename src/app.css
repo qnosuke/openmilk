@@ -587,6 +587,31 @@ h1 {
   border-radius: 8px;
 }
 
+/* タスク / 完了 の切替タブ */
+.view-toggle {
+  display: flex;
+  flex: none;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.view-toggle button {
+  padding: 5px 10px;
+  font-size: 12px;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.view-toggle button.active {
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+}
+
 .quick-add {
   display: flex;
   gap: 8px;

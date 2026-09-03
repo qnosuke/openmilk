@@ -86,6 +86,9 @@ const dicts: Record<Locale, Dict> = {
     reopenN: '{n} 件を未完了に戻す',
     muteTag: '「{tag}」を非表示',
     deletedCompletedN: '完了タスク {n} 件を削除しました',
+    viewTasks: 'タスク',
+    viewCompleted: '完了',
+    viewAria: '表示を切り替え',
   },
   en: {
     allLists: 'All',
@@ -163,6 +166,9 @@ const dicts: Record<Locale, Dict> = {
     reopenN: 'Reopen {n}',
     muteTag: 'Hide "{tag}"',
     deletedCompletedN: 'Deleted {n} completed tasks',
+    viewTasks: 'Tasks',
+    viewCompleted: 'Done',
+    viewAria: 'Switch view',
   },
   zh: {
     allLists: '全部',
@@ -240,6 +246,9 @@ const dicts: Record<Locale, Dict> = {
     reopenN: '将 {n} 件改回未完成',
     muteTag: '隐藏「{tag}」',
     deletedCompletedN: '已删除 {n} 条已完成任务',
+    viewTasks: '任务',
+    viewCompleted: '已完成',
+    viewAria: '切换视图',
   },
 };
 

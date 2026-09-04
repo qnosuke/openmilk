@@ -125,8 +125,8 @@
   aria-label={t('dialogAria')}
   onclose={onclose}
   onclick={(e) => {
-    // 背景クリック（ダイアログ自体がクリック元）のときだけ閉じる
-    if (e.target === dialogEl) onclose();
+    // 背景クリック（ダイアログ自体がクリック元）でも保存する
+    if (e.target === dialogEl) save();
   }}
 >
   <!-- novalidate: 時刻の手入力（5分刻み以外）も保存できるようにする -->

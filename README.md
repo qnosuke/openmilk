@@ -1,3 +1,5 @@
+**日本語** | [English](./README.en.md) | [中文](./README.zh.md)
+
 # openmilk 🥛
 
 Remember The Milk の代替を目指す、ブラウザで完結するタスク管理 Web アプリ（開発中）。
@@ -6,6 +8,8 @@ Remember The Milk の代替を目指す、ブラウザで完結するタスク�
 - データはブラウザ内（IndexedDB）。JSON でのバックアップ/復元を実装予定
 - UI は日本語 / English / 中文対応
 - AI エージェント（OpenClaw など）からファイル経由で操作しやすい設計を計画
+
+**初めて使う方は [使い方マニュアル](./MANUAL.md) へ**（[English](./MANUAL.en.md) / [中文](./MANUAL.zh.md)）
 
 ## 開発
 

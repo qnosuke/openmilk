@@ -213,7 +213,7 @@
        ドット絵アイコンをクリックすると右にピクセル風ウィンドウが出る -->
   <details class="settings" bind:this={detailsEl}>
     <summary aria-label={t('settings')} title={t('settings')}>
-      <img class="milk-icon" src="/milk-pixel.png" alt={t('settings')} />
+      <img class="milk-icon" src={import.meta.env.BASE_URL + 'milk-pixel.png'} alt={t('settings')} />
     </summary>
     <div class="settings-body">
       <form class="new-list" onsubmit={(e) => submit(e)}>

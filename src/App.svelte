@@ -438,7 +438,7 @@
         const n = new Notification(t('reminderTitle'), {
           body: task.title,
           tag: task.id,
-          icon: '/icons/milk-192.png',
+          icon: `${import.meta.env.BASE_URL}icons/milk-192.png`,
         });
         n.onclick = () => {
           window.focus();

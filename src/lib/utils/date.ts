@@ -12,7 +12,7 @@ const MONTHS_EN = [
 ];
 
 const DUE_LABELS: Record<Locale, { today: string; tomorrow: string; dayAfter: string; overdue: string }> = {
-  ja: { today: '今日', tomorrow: '明日', dayAfter: '明後日', overdue: '逾期' },
+  ja: { today: '今日', tomorrow: '明日', dayAfter: '明後日', overdue: '期限切れ' },
   en: { today: 'Today', tomorrow: 'Tomorrow', dayAfter: 'In 2 days', overdue: 'Overdue' },
   zh: { today: '今天', tomorrow: '明天', dayAfter: '后天', overdue: '已过期' },
 };
@@ -47,7 +47,7 @@ export function daysFromToday(iso: string, today: Date = new Date()): number {
   return Math.round((a - b) / 86_400_000);
 }
 
-/** 表示用: 逾期/今日/明日/明後日 は相対表現、それ以外は M/D(曜) */
+/** 表示用: 期限切れ/今日/明日/明後日 は相対表現、それ以外は M/D(曜) */
 export function formatDue(iso: string, locale: Locale, today: Date = new Date()): string {
   const diff = daysFromToday(iso, today);
   const labels = DUE_LABELS[locale];

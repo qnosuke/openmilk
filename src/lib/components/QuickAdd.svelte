@@ -3,7 +3,7 @@
   import { formatDue, formatDuration } from '../utils/date';
   import { parseTaskInput, type ParsedTask } from '../utils/parseTask';
 
-  let { onadd }: { onadd: (parsed: ParsedTask) => void } = $props();
+  let { onadd, onaddMany }: { onadd: (parsed: ParsedTask) => void; onaddMany?: (lines: string[]) => void } = $props();
 
   let text = $state('');
 
@@ -45,6 +45,19 @@
       submit();
     }
   }
+
+  // 複数行の貼り付けは改行で分割して一括追加する（1行=1タスク）
+  function handlePaste(event: ClipboardEvent) {
+    const text = event.clipboardData?.getData('text/plain') ?? '';
+    if (!text.includes('\n')) return;
+    const lines = text
+      .split(/\r?\n/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (lines.length <= 1) return;
+    event.preventDefault();
+    onaddMany?.(lines);
+  }
 </script>
 
 <form class="quick-add" onsubmit={(e) => submit(e)}>
@@ -54,6 +67,7 @@
     aria-label={t('add')}
     bind:value={text}
     onkeydown={handleKeydown}
+    onpaste={handlePaste}
   />
   <button type="submit" disabled={!parsed?.title}>{t('add')}</button>
 </form>

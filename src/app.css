@@ -1087,3 +1087,262 @@ dialog.dialog::backdrop {
     display: none;
   }
 }
+
+/* --- 検索ハイライト --- */
+
+.link-title mark,
+.note-preview mark {
+  padding: 0 1px;
+  color: inherit;
+  background: #ffe27a;
+  border-radius: 3px;
+}
+
+/* --- 優先度 !1 の強調 --- */
+
+.row.p1 {
+  border-left: 3px solid var(--p1);
+}
+
+.row.p1 .link-title {
+  font-weight: 700;
+}
+
+/* --- INBOX 仕分けモード --- */
+
+.triage-banner {
+  margin: 12px 0 0;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: #fff;
+  background: #1d2530;
+  border-radius: var(--radius);
+}
+
+.nav-btn.inbox.triage {
+  color: #fff;
+  background: #1d2530;
+}
+
+.nav-btn.inbox.triage .count {
+  color: #fff;
+  background: rgb(255 255 255 / 25%);
+}
+
+.triage-btn {
+  padding: 1px 8px;
+  font-size: 11.5px;
+  font-family: inherit;
+  color: #fff;
+  background: #1d2530;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.triage-btn:hover {
+  background: var(--accent);
+}
+
+.sort-fixed {
+  font-size: 12.5px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* --- タグの一括追加・削除 --- */
+
+.bulk-tag-input {
+  width: 110px;
+  padding: 6px 10px;
+  font-size: 12.5px;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+/* --- ポモドーロ --- */
+
+.pomodoro-chip {
+  flex: none;
+  padding: 4px 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--accent);
+  background: rgb(47 111 237 / 10%);
+  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.pomodoro-chip.onbreak {
+  color: #0f766e;
+  background: rgb(13 148 136 / 12%);
+}
+
+.pomodoro-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pomo-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.pomo-field {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.pomo-field span {
+  flex: 1;
+  min-width: 0;
+}
+
+.pomo-field input {
+  width: 52px;
+  padding: 4px 6px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+/* --- 統計 --- */
+
+.stats-hint {
+  margin: 10px 2px 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.stats-table {
+  width: 100%;
+  margin-top: 12px;
+  font-size: 13.5px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+}
+
+.stats-table th,
+.stats-table td {
+  padding: 9px 14px;
+  text-align: right;
+  border-bottom: 1px solid var(--border);
+}
+
+.stats-table th:first-child,
+.stats-table td:first-child {
+  text-align: left;
+  font-weight: 600;
+}
+
+.stats-table tbody tr:last-child th,
+.stats-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.stats-table thead th {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--muted);
+  background: rgb(0 0 0 / 3%);
+}
+
+.stats-table td.num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- サブタスク --- */
+
+.row.child {
+  margin-left: 26px;
+  background: rgb(255 255 255 / 65%);
+}
+
+.subtask-chip {
+  padding: 1px 7px;
+  font-size: 11.5px;
+  color: var(--muted);
+  background: rgb(0 0 0 / 6%);
+  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- 編集ダイアログ: サブタスク分割 --- */
+
+.split-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.split-head {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.split-note {
+  margin: 0;
+  padding-top: 12px;
+  font-size: 12px;
+  color: var(--muted);
+  border-top: 1px solid var(--border);
+}
+
+.subtask-list {
+  margin: 0;
+  padding: 0 0 0 18px;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.subtask-list li.done {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.split-input {
+  min-height: 64px !important;
+  font-size: 13px !important;
+  resize: vertical;
+}
+
+.split-add {
+  align-self: flex-end;
+  padding: 6px 14px;
+  font-size: 12.5px;
+  color: var(--text);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.split-add:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.split-add:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}

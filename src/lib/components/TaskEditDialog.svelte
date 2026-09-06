@@ -22,15 +22,21 @@
   let {
     task,
     lists,
+    subtasks,
     onsave,
     ondelete,
     onclose,
+    onsplit,
   }: {
     task: Task;
     lists: List[];
+    /** このタスクのサブタスク（削除済みを除く） */
+    subtasks: Task[];
     onsave: (id: string, edits: TaskEdits) => void;
     ondelete: (id: string) => void;
     onclose: () => void;
+    /** 1行=1サブタスクで分割追加する（クイック追加の記法が使える） */
+    onsplit: (id: string, lines: string[]) => void;
   } = $props();
 
   let dialogEl = $state<HTMLDialogElement>();
@@ -49,6 +55,7 @@
   let listId = $state('');
   let estimateText = $state('');
   let trackedText = $state('');
+  let splitText = $state('');
 
   // メモ欄を内容に合わせて伸縮させる（上限付きでそれ以上は内部スクロール）。
   // 収まっている間はスクロールバーを出さない
@@ -79,6 +86,7 @@
       trackedText = task.trackedMinutes
         ? formatDuration(task.trackedMinutes, i18n.locale)
         : '';
+      splitText = '';
       dialogEl?.showModal();
       queueMicrotask(() => fitNotes());
     }
@@ -99,6 +107,16 @@
   function deleteTask() {
     ondelete(task.id);
     close();
+  }
+
+  function doSplit() {
+    const lines = splitText
+      .split(/\r?\n/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (lines.length === 0) return;
+    onsplit(task.id, lines);
+    splitText = '';
   }
 
   function save() {
@@ -192,6 +210,32 @@
       {t('tagsLabel')}
       <input type="text" placeholder={t('tagsPlaceholder')} bind:value={tagsText} />
     </label>
+    {#if task.parentId}
+      <p class="split-note">{t('subtaskDepthNote')}</p>
+    {:else}
+      <div class="split-box">
+        <div class="split-head">
+          {t('subtasksLabel')}{#if subtasks.length > 0}&nbsp;({subtasks.length}){/if}
+        </div>
+        {#if subtasks.length > 0}
+          <ul class="subtask-list">
+            {#each subtasks as sub (sub.id)}
+              <li class:done={sub.completedAt !== undefined}>{sub.title}</li>
+            {/each}
+          </ul>
+        {/if}
+        <textarea
+          class="split-input"
+          rows="3"
+          placeholder={t('splitPlaceholder')}
+          aria-label={t('subtasksLabel')}
+          bind:value={splitText}
+        ></textarea>
+        <button type="button" class="split-add" disabled={!splitText.trim()} onclick={doSplit}>
+          {t('splitAdd')}
+        </button>
+      </div>
+    {/if}
     <div class="actions">
       <!-- 破壊的操作は左端のグレーに（誤タップ防止） -->
       <button type="button" class="delete-left" onclick={deleteTask}>{t('deleteLabel')}</button>

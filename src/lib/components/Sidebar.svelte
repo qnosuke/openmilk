@@ -6,6 +6,7 @@
 <script lang="ts">
   import { LOCALE_NAMES, i18n, locales, setLocale, t, type Locale } from '../i18n.svelte';
   import type { List } from '../db/schema';
+  import type { PomodoroSettings } from '../utils/pomodoro';
 
   let {
     lists,
@@ -21,6 +22,8 @@
     completedCount,
     trashActive,
     search,
+    triageActive,
+    pomodoro,
     onsearch,
     onselect,
     oncreate,
@@ -32,6 +35,7 @@
     ontoggleMute,
     onToggleTrash,
     onDeleteCompleted,
+    onsetPomodoro,
   }: {
     lists: List[];
     selected: string;
@@ -49,6 +53,10 @@
     trashActive: boolean;
     completedCount: number;
     search: string;
+    /** INBOX 仕分けモード中表示（INBOX ボタンの色を反転） */
+    triageActive: boolean;
+    /** ポモドーロ設定（⚙ から編集） */
+    pomodoro: PomodoroSettings;
     onselect: (id: string) => void;
     oncreate: (name: string) => void;
     ondelete: (id: string) => void;
@@ -63,6 +71,8 @@
     /** ⚙ のゴミ箱ボタン: ゴミ箱ビューを開閉する */
     onToggleTrash: () => void;
     onDeleteCompleted: () => void;
+    /** ポモドーロ設定の 1 項目を変更する */
+    onsetPomodoro: (key: keyof PomodoroSettings, value: number) => void;
   } = $props();
 
   let fileInput = $state<HTMLInputElement>();
@@ -117,6 +127,18 @@
     { value: 'tomorrow', label: t('filterTomorrow'), count: rangeCounts.tomorrow },
     { value: 'week', label: t('filterWeek'), count: rangeCounts.week },
   ] as const);
+
+  const pomodoroFields = $derived([
+    { key: 'workMinutes', label: t('pomodoroWork'), max: 240 },
+    { key: 'breakMinutes', label: t('pomodoroBreakSetting'), max: 60 },
+    { key: 'longBreakMinutes', label: t('pomodoroLongBreak'), max: 120 },
+    { key: 'longBreakEvery', label: t('pomodoroLongEvery'), max: 12 },
+  ] as const);
+
+  function setPomodoro(key: keyof PomodoroSettings, value: string) {
+    const n = Math.max(1, Math.round(Number(value) || 0));
+    onsetPomodoro(key, Math.min(n, 600));
+  }
 </script>
 
 <aside class="sidebar">
@@ -127,8 +149,14 @@
       <span class="nav-label">{t('allLists')}</span>
       <span class="count">{counts.all ?? 0}</span>
     </button>
-    <button class="nav-btn inbox" class:active={selected === 'inbox'} onclick={() => onselect('inbox')}>
-      <span class="nav-label">{t('inbox')}</span>
+    <button
+      class="nav-btn inbox"
+      class:active={selected === 'inbox'}
+      class:triage={triageActive}
+      title={triageActive ? t('triageMode') : undefined}
+      onclick={() => onselect('inbox')}
+    >
+      <span class="nav-label">{triageActive ? `📥 ${t('inbox')}` : t('inbox')}</span>
       <span class="count">{counts.inbox ?? 0}</span>
     </button>
     {#each lists as list (list.id)}
@@ -269,6 +297,24 @@
       <button class="wipe" disabled={completedCount === 0 && !confirmWipe} onclick={wipeClicked}>
         {confirmWipe ? t('confirmDeleteN', { n: completedCount }) : `${t('deleteCompleted')} (${completedCount})`}
       </button>
+      <div class="pomodoro-settings">
+        <div class="section-label">{t('pomodoroLabel')}</div>
+        <div class="pomo-grid">
+          {#each pomodoroFields as field (field.key)}
+            <label class="pomo-field">
+              <span>{field.label}</span>
+              <input
+                type="number"
+                min="1"
+                max={field.max}
+                value={pomodoro[field.key]}
+                aria-label={`${t('pomodoroLabel')} ${field.label}`}
+                onchange={(e) => setPomodoro(field.key, e.currentTarget.value)}
+              />
+            </label>
+          {/each}
+        </div>
+      </div>
       <label class="lang">
         <span>{t('language')}</span>
         <select

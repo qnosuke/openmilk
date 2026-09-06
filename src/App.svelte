@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import QuickAdd from './lib/components/QuickAdd.svelte';
   import Sidebar, { UNTAGGED } from './lib/components/Sidebar.svelte';
+  import StatsView from './lib/components/StatsView.svelte';
   import TaskEditDialog, { type TaskEdits } from './lib/components/TaskEditDialog.svelte';
   import TaskRow from './lib/components/TaskRow.svelte';
   import { i18n, t } from './lib/i18n.svelte';
@@ -33,9 +34,19 @@
     todayISO,
   } from './lib/utils/date';
   import { parseTaskInput, type ParsedTask } from './lib/utils/parseTask';
+  import {
+    DEFAULT_POMODORO,
+    formatPomodoroClock,
+    pomodoroPhase,
+    type PomodoroSettings,
+  } from './lib/utils/pomodoro';
   import { sortTasks, type SortMode } from './lib/utils/sorting';
+  import { splitOneLevel } from './lib/utils/subtasks';
 
   const SORT_KEY = 'openmilk.sort';
+  const POMODORO_KEY = 'openmilk.pomodoro';
+  /** 複数行一括追加の上限（誤って巨大テキストを流し込む事故防止） */
+  const BULK_ADD_LIMIT = 100;
 
   let tasks = $state<Task[]>([]);
   let lists = $state<List[]>([]);
@@ -49,8 +60,10 @@
   let searchQuery = $state('');
   let selectedIds = $state<string[]>([]);
   let mutedTags = $state<string[]>(loadMutedTags());
-  let view = $state<'active' | 'completed' | 'trash'>('active');
+  let view = $state<'active' | 'completed' | 'trash' | 'stats'>('active');
   let nowTick = $state(Date.now());
+  let bulkTag = $state('');
+  let pomodoro = $state<PomodoroSettings>(loadPomodoro());
 
   function toggleTrash() {
     view = view === 'trash' ? 'active' : 'trash';
@@ -94,6 +107,30 @@
     }
   });
 
+  function loadPomodoro(): PomodoroSettings {
+    try {
+      const saved = JSON.parse(localStorage.getItem(POMODORO_KEY) ?? '{}');
+      if (typeof saved === 'object' && saved !== null) {
+        return { ...DEFAULT_POMODORO, ...saved };
+      }
+    } catch {
+      // localStorage が使えない環境ではデフォルト設定
+    }
+    return { ...DEFAULT_POMODORO };
+  }
+
+  $effect(() => {
+    try {
+      localStorage.setItem(POMODORO_KEY, JSON.stringify(pomodoro));
+    } catch {
+      // 保存できなくても動作には影響しない
+    }
+  });
+
+  function setPomodoro(key: keyof PomodoroSettings, value: number) {
+    pomodoro = { ...pomodoro, [key]: value };
+  }
+
   onMount(() => {
     const unsubscribeTasks = observeVisibleTasks((list) => {
       tasks = list;
@@ -105,11 +142,16 @@
     void handleAddParam();
     void ensureFixedLists();
     void purgeExpiredTrash();
+    // テキストファイル・複数行テキストのドロップで INBOX 一括追加
+    window.addEventListener('dragover', handleDragOver);
+    window.addEventListener('drop', handleDrop);
     // リマインダー: 30秒ごとに予定時刻の到達をチェック
     const reminderInterval = window.setInterval(() => checkReminders(), 30_000);
     // デバッグ・自動テスト用
     (window as unknown as Record<string, unknown>).__openmilk = { checkReminders };
     return () => {
+      window.removeEventListener('dragover', handleDragOver);
+      window.removeEventListener('drop', handleDrop);
       window.clearInterval(reminderInterval);
       unsubscribeTasks();
       unsubscribeLists();
@@ -188,13 +230,16 @@
 
   const editingTask = $derived(editingId ? (tasks.find((t) => t.id === editingId) ?? null) : null);
 
+  /** INBOX は仕分け場所なので追加順（古いものが先）で固定する */
+  const effectiveSort = $derived(selected === 'inbox' ? 'added' : sortMode);
+
   const sortOptions = $derived([
     { value: 'due', label: t('sortDue') },
     { value: 'priority', label: t('sortPriority') },
     { value: 'created', label: t('sortCreated') },
   ] as const);
 
-  const visibleTasks = $derived.by(() => {
+  const filteredSorted = $derived.by(() => {
     const t0 = todayISO();
     const tomorrow = addDays(t0, 1);
     const weekEnd = addDays(t0, 7);
@@ -226,7 +271,29 @@
       if (dueFilter === 'tomorrow') return task.due === tomorrow;
       return task.due >= t0 && task.due <= weekEnd;
     });
-    return sortTasks(filtered, sortMode);
+    return sortTasks(filtered, effectiveSort);
+  });
+
+  /** サブタスクは 1 階層限定。親の下にぶら下がる子と、それ以外の通常行に分ける */
+  const oneLevel = $derived(splitOneLevel(filteredSorted));
+
+  /** 親が同じビューに見えているサブタスクは行から取り除き、親の下にインデント表示する */
+  const visibleTasks = $derived(oneLevel.rows);
+
+  /** 親タスク id → そのビューで見えているサブタスク（表示順に従う） */
+  const childRows = $derived(oneLevel.childrenByParent);
+
+  /** 親タスク id → サブタスク進捗（削除済みを除く） */
+  const subtaskProgress = $derived.by(() => {
+    const map = new Map<string, { done: number; total: number }>();
+    for (const task of tasks) {
+      if (!task.parentId || task.deleted) continue;
+      const info = map.get(task.parentId) ?? { done: 0, total: 0 };
+      info.total += 1;
+      if (task.completedAt !== undefined) info.done += 1;
+      map.set(task.parentId, info);
+    }
+    return map;
   });
 
   /** サイドバーの期間タイルに表示する未完了件数 */
@@ -248,7 +315,7 @@
     return { overdue, today, tomorrow: tomorrowCount, week };
   });
 
-  const remaining = $derived(visibleTasks.filter((task) => task.completedAt === undefined).length);
+  const remaining = $derived(filteredSorted.filter((task) => task.completedAt === undefined).length);
 
   const counts = $derived.by(() => {
     const result: Record<string, number> = { all: 0, inbox: 0 };
@@ -325,6 +392,10 @@
   );
 
   async function addTask(parsed: ParsedTask) {
+    await addParsed(parsed);
+  }
+
+  async function addParsed(parsed: ParsedTask) {
     // タグ絞り込み中の追加はそのタグを自動で付ける（タグなし絞り込み中は付けない）
     const tags =
       tagFilter && tagFilter !== UNTAGGED && !parsed.tags.includes(tagFilter)
@@ -338,12 +409,107 @@
     });
   }
 
+  /** 改行区切りのテキストを 1 行 = 1 タスクで一括追加する（クイック追加の記法が使える） */
+  async function addLines(lines: string[]) {
+    let added = 0;
+    for (const line of lines.slice(0, BULK_ADD_LIMIT)) {
+      const parsed = parseTaskInput(line);
+      if (!parsed.title) continue;
+      await addParsed(parsed);
+      added += 1;
+    }
+    if (added > 0) flashDataStatus(t('bulkAdded', { n: added }));
+  }
+
+  function splitBulkLines(text: string): string[] {
+    return text
+      .split(/\r?\n/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+
+  // 入力欄へのドロップ（通常のテキスト挿入）は一括追加の対象外にする
+  function isEditableTarget(target: EventTarget | null): boolean {
+    return (
+      target instanceof HTMLElement &&
+      (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT' || target.isContentEditable)
+    );
+  }
+
+  function handleDragOver(event: DragEvent) {
+    if (isEditableTarget(event.target)) return;
+    event.preventDefault();
+  }
+
+  function handleDrop(event: DragEvent) {
+    if (isEditableTarget(event.target)) return;
+    const dt = event.dataTransfer;
+    if (!dt) return;
+    event.preventDefault();
+    const file = dt.files?.[0];
+    if (file && /\.(txt|md|csv)$/i.test(file.name)) {
+      void file.text().then((text) => addLines(splitBulkLines(text)));
+      return;
+    }
+    const text = dt.getData('text/plain');
+    if (text && text.includes('\n')) void addLines(splitBulkLines(text));
+  }
+
+  // --- INBOX 仕分けモード ---
+  const isTriage = $derived(selected === 'inbox' && view === 'active');
+
+  /** 仕分けモードの移動先（next action / waiting / someday の固定リスト） */
+  const triageLists = $derived(
+    lists.filter((l) => l.fixed).map((l) => ({ id: l.id, name: l.name })),
+  );
+
+  async function moveTriage(id: string, listId: string) {
+    await updateTask(id, { listId });
+  }
+
+  // --- タグの一括追加・削除 ---
+  async function applyBulkTag(add: boolean) {
+    const tag = bulkTag.trim().replace(/^#/, '');
+    if (!tag || selectedIds.length === 0) return;
+    const ids = [...selectedIds];
+    await Promise.all(
+      ids.map((id) => {
+        const task = tasks.find((t) => t.id === id);
+        if (!task) return Promise.resolve();
+        const next = add ? [...new Set([...task.tags, tag])] : task.tags.filter((x) => x !== tag);
+        if (next.length === task.tags.length) return Promise.resolve();
+        return updateTask(id, { tags: next });
+      }),
+    );
+    bulkTag = '';
+  }
+
+  // --- サブタスク分割 ---
+  const editingSubtasks = $derived(
+    editingId ? tasks.filter((t) => t.parentId === editingId && !t.deleted) : [],
+  );
+
+  async function splitTask(id: string, lines: string[]) {
+    const parent = tasks.find((t) => t.id === id);
+    if (!parent) return;
+    let added = 0;
+    for (const line of lines.slice(0, BULK_ADD_LIMIT)) {
+      const parsed = parseTaskInput(line);
+      if (!parsed.title) continue;
+      // 親のタグを引き継ぎ、親と同じリストに作る
+      const tags = [...new Set([...parent.tags, ...parsed.tags])];
+      await createTask({ ...parsed, tags, listId: parent.listId, parentId: id });
+      added += 1;
+    }
+    if (added > 0) flashDataStatus(t('splitAdded', { n: added }));
+  }
+
   const allVisibleSelected = $derived(
-    visibleTasks.length > 0 && visibleTasks.every((t) => selectedIds.includes(t.id)),
+    filteredSorted.length > 0 && filteredSorted.every((t) => selectedIds.includes(t.id)),
   );
 
   function toggleSelectAll(checked: boolean) {
-    selectedIds = checked ? visibleTasks.map((t) => t.id) : [];
+    selectedIds = checked ? filteredSorted.map((t) => t.id) : [];
   }
 
   async function addList(name: string) {
@@ -395,6 +561,64 @@
     const elapsed = (t.trackedMinutes ?? 0) + (Date.now() - new Date(t.timerStartedAt!).getTime()) / 60_000;
     return { id: t.id, minutes: Math.max(0, elapsed) };
   });
+
+  // --- ポモドーロ ---
+  /** 計測中タスクに重ねた現在のポモドーロフェーズ（計測中のみ） */
+  const pomoLive = $derived.by(() => {
+    if (!tracking) return undefined;
+    void nowTick;
+    return pomodoroPhase(tracking.minutes * 60, pomodoro);
+  });
+
+  let lastPomoKey = '';
+
+  // フェーズ切り替わり（集中→休憩→次の集中）で1回だけ通知する
+  $effect(() => {
+    if (!pomoLive) {
+      lastPomoKey = '';
+      return;
+    }
+    const key = `${tracking?.id}:${pomoLive.session}:${pomoLive.phase}`;
+    if (key === lastPomoKey) return;
+    const resumed = lastPomoKey !== '';
+    lastPomoKey = key;
+    if (!resumed) return; // 計測開始時には通知しない
+    if (pomoLive.phase === 'break' || pomoLive.phase === 'longBreak') {
+      const minutes =
+        pomoLive.phase === 'longBreak' ? pomodoro.longBreakMinutes : pomodoro.breakMinutes;
+      pomodoroNotify(t('pomodoroBreakTitle'), t('pomodoroBreakBody', { min: minutes }));
+      bumpPomodoroCount();
+    } else if (pomoLive.session > 1) {
+      pomodoroNotify(t('pomodoroFocusTitle'), t('pomodoroFocusBody'));
+    }
+  });
+
+  function pomodoroNotify(title: string, body: string) {
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      const n = new Notification(title, {
+        body,
+        icon: `${import.meta.env.BASE_URL}icons/milk-192.png`,
+      });
+      n.onclick = () => {
+        window.focus();
+        n.close();
+      };
+    } else {
+      // 通知権限が無い場合はデータステータス欄で代用する
+      flashDataStatus(`${title} — ${body}`);
+    }
+  }
+
+  /** 今日完了したポモドーロ数（将来の統計の材料。localStorage に置く） */
+  function bumpPomodoroCount() {
+    try {
+      const key = `openmilk.pomo.${todayISO()}`;
+      const n = Number(localStorage.getItem(key) ?? '0');
+      localStorage.setItem(key, String(n + 1));
+    } catch {
+      // 保存できなくても動作には影響しない
+    }
+  }
 
   const selectedAllCompleted = $derived(
     selectedIds.length > 0 &&
@@ -474,6 +698,9 @@
     {dataStatus}
     trashActive={view === 'trash'}
     completedCount={completedCount}
+    triageActive={isTriage}
+    {pomodoro}
+    onsetPomodoro={setPomodoro}
     onselect={(id) => (selected = id)}
     oncreate={addList}
     ondelete={removeList}
@@ -519,18 +746,46 @@
         >
           {t('viewCompleted')}
         </button>
+        <button
+          class:active={view === 'stats'}
+          onclick={() => (view = 'stats')}
+          aria-label={t('viewStats')}
+        >
+          {t('viewStats')}
+        </button>
       </div>
-      <label class="sort">
-        <span>{t('sortLabel')}</span>
-        <select bind:value={sortMode} aria-label={t('sortLabel')}>
-          {#each sortOptions as option (option.value)}
-            <option value={option.value}>{option.label}</option>
-          {/each}
-        </select>
-      </label>
+      {#if pomoLive}
+        <span class="pomodoro-chip" class:onbreak={pomoLive.phase !== 'focus'}>
+          {pomoLive.phase === 'focus'
+            ? t('pomodoroChipFocus', {
+                n: pomoLive.session,
+                time: formatPomodoroClock(pomoLive.remainingSeconds),
+              })
+            : t('pomodoroChipBreak', { time: formatPomodoroClock(pomoLive.remainingSeconds) })}
+        </span>
+      {/if}
+      {#if selected !== 'inbox' || view === 'stats'}
+        <label class="sort">
+          <span>{t('sortLabel')}</span>
+          <select bind:value={sortMode} aria-label={t('sortLabel')}>
+            {#each sortOptions as option (option.value)}
+              <option value={option.value}>{option.label}</option>
+            {/each}
+          </select>
+        </label>
+      {:else}
+        <span class="sort sort-fixed">{t('sortAddedFixed')}</span>
+      {/if}
     </header>
 
-    <QuickAdd onadd={addTask} />
+    {#if isTriage}
+      <div class="triage-banner" role="status">
+        📥 {t('triageMode')} — {t('triageHint')}
+      </div>
+    {/if}
+
+    {#if view !== 'stats'}
+      <QuickAdd onadd={addTask} onaddMany={(lines) => void addLines(lines)} />
 
     {#if selectedIds.length > 0}
       <div class="bulk-bar">
@@ -557,6 +812,19 @@
           <button class="bulk-postpone" onclick={postponeSelected}>
             {t('postponeN', { n: selectedIds.length })}
           </button>
+          <input
+            class="bulk-tag-input"
+            type="text"
+            placeholder={t('bulkTagPlaceholder')}
+            aria-label={t('bulkAddTag')}
+            bind:value={bulkTag}
+          />
+          <button class="bulk-postpone" onclick={() => void applyBulkTag(true)}>
+            {t('bulkAddTag')}
+          </button>
+          <button class="bulk-postpone" onclick={() => void applyBulkTag(false)}>
+            {t('bulkRemoveTag')}
+          </button>
         {/if}
         <button class="bulk-cancel" onclick={clearSelection}>{t('clearSelection')}</button>
       </div>
@@ -565,8 +833,11 @@
     {#if view === 'trash'}
       <p class="trash-note">{t('trashNote')}</p>
     {/if}
+    {/if}
 
-    {#if !loaded}
+    {#if view === 'stats'}
+      <StatsView {tasks} />
+    {:else if !loaded}
       <p class="empty">{t('loading')}</p>
     {:else if visibleTasks.length === 0}
       <p class="empty">
@@ -575,27 +846,38 @@
       </p>
     {:else}
       <ul class="tasks">
+        {#snippet row(t: Task, isChild: boolean)}
+          <TaskRow
+            task={t}
+            listName={lists.find((l) => l.id === t.listId)?.name}
+            activeTag={tagFilter}
+            {mutedTags}
+            selected={selectedIds.includes(t.id)}
+            liveMinutes={tracking?.id === t.id ? tracking.minutes : undefined}
+            searchQuery={searchQuery}
+            triageLists={isTriage ? triageLists : undefined}
+            child={isChild}
+            subtaskInfo={subtaskProgress.get(t.id)}
+            ontoggle={(id, checked) =>
+              (selectedIds = checked
+                ? [...selectedIds, id]
+                : selectedIds.filter((sid) => sid !== id))}
+            onedit={(id) => (editingId = id)}
+            ontag={(tag) => (tagFilter = tagFilter === tag ? null : tag)}
+            onstartTimer={startTaskTimer}
+            onstopTimer={stopTaskTimer}
+            ontriage={moveTriage}
+          />
+        {/snippet}
         {#each visibleTasks as task (task.id)}
-        <TaskRow
-          {task}
-          listName={lists.find((l) => l.id === task.listId)?.name}
-          activeTag={tagFilter}
-          {mutedTags}
-          selected={selectedIds.includes(task.id)}
-          liveMinutes={tracking?.id === task.id ? tracking.minutes : undefined}
-          ontoggle={(id, checked) =>
-            (selectedIds = checked
-              ? [...selectedIds, id]
-              : selectedIds.filter((sid) => sid !== id))}
-          onedit={(id) => (editingId = id)}
-          ontag={(tag) => (tagFilter = tagFilter === tag ? null : tag)}
-          onstartTimer={startTaskTimer}
-          onstopTimer={stopTaskTimer}
-        />
+          {@render row(task, false)}
+          {#each childRows.get(task.id) ?? [] as sub (sub.id)}
+            {@render row(sub, true)}
+          {/each}
         {/each}
       </ul>
       <p class="footer">
-        {t('remaining', { n: remaining, total: visibleTasks.length })}
+        {t('remaining', { n: remaining, total: filteredSorted.length })}
         {#if todayMinutes > 0}
           · {t('todayTotal', { duration: formatDuration(todayMinutes, i18n.locale) })}
         {/if}
@@ -608,8 +890,10 @@
   <TaskEditDialog
     task={editingTask}
     {lists}
+    subtasks={editingSubtasks}
     onsave={saveEdit}
     ondelete={softDeleteTask}
     onclose={() => (editingId = null)}
+    onsplit={splitTask}
   />
 {/if}

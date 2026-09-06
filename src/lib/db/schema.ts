@@ -24,6 +24,8 @@ export interface Task {
   timerStartedAt?: string;
   /** 所属リスト。undefined は INBOX */
   listId?: string;
+  /** 親タスクの id（サブタスク）。未定義は通常タスク */
+  parentId?: string;
   /** 繰り返しルール（将来拡張） */
   recurrence?: string;
   /** 完了日時 ISO 8601。未完了は undefined */
@@ -58,6 +60,12 @@ db.version(1).stores({
 
 // v2: リスト機能（tasks.listId, lists テーブル）
 db.version(2).stores({
+  tasks: 'id, deleted, completedAt, due, *tags, listId',
+  lists: 'id, deleted, order',
+});
+
+// v3: サブタスク（tasks.parentId）。絞り込みは UI 側で行うため索引にはしない
+db.version(3).stores({
   tasks: 'id, deleted, completedAt, due, *tags, listId',
   lists: 'id, deleted, order',
 });

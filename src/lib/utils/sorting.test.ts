@@ -60,4 +60,14 @@ describe('sortTasks', () => {
       'done',
     ]);
   });
+
+  it('added: 古いものが先（INBOX固定・完了は最後）', () => {
+    const older = task({ id: 'older', createdAt: '2026-08-31T00:00:00.000Z' });
+    const newer = task({ id: 'newer', createdAt: '2026-09-01T12:00:00.000Z' });
+    expect(sortTasks([newer, done, older], 'added').map((t) => t.id)).toEqual([
+      'older',
+      'newer',
+      'done',
+    ]);
+  });
 });

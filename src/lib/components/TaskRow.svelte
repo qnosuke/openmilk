@@ -2,6 +2,7 @@
   import { i18n, t } from '../i18n.svelte';
   import type { Task } from '../db/schema';
   import { daysFromToday, formatDue, formatDuration } from '../utils/date';
+  import { splitHighlight } from '../utils/highlight';
 
   let {
     task,
@@ -10,11 +11,16 @@
     mutedTags,
     selected,
     liveMinutes,
+    searchQuery,
+    triageLists,
+    child,
+    subtaskInfo,
     ontoggle,
     onedit,
     ontag,
     onstartTimer,
     onstopTimer,
+    ontriage,
   }: {
     task: Task;
     /** 「すべて」表示時に所属リスト名を出す（INBOX タスクでは undefined） */
@@ -27,19 +33,30 @@
     selected?: boolean;
     /** 計測中の経過（分）。このタスクが計測中のときだけ渡る */
     liveMinutes?: number;
+    /** 検索ワード（タイトルとメモの該当部分をハイライト） */
+    searchQuery?: string;
+    /** 仕分けモード中に表示する移動先リスト（INBOX のみ） */
+    triageLists?: { id: string; name: string }[];
+    /** サブタスク行（インデントして表示） */
+    child?: boolean;
+    /** 親タスク側に表示するサブタスク進捗 */
+    subtaskInfo?: { done: number; total: number };
     /** チェックボックスは「一括操作への選択」。完了・延期はバーから実行する */
     ontoggle: (id: string, selected: boolean) => void;
     onedit: (id: string) => void;
     ontag: (tag: string) => void;
     onstartTimer: (id: string) => void;
     onstopTimer: (id: string) => void;
+    ontriage?: (id: string, listId: string) => void;
   } = $props();
 
   const overdue = $derived(
     task.completedAt === undefined && task.due !== undefined && daysFromToday(task.due) < 0,
   );
   const visibleTags = $derived(task.tags.filter((tag) => !(mutedTags ?? []).includes(tag)));
-  const notePreview = $derived((task.notes ?? '').split('\n')[0].trim().slice(0, 80));
+  const noteFirstLine = $derived((task.notes ?? '').split('\n')[0].trim().slice(0, 80));
+  const titleParts = $derived(splitHighlight(task.title, searchQuery));
+  const noteParts = $derived(splitHighlight(noteFirstLine, searchQuery));
   const isTracking = $derived(liveMinutes !== undefined);
   const overEstimate = $derived(
     !!task.estimateMinutes && liveMinutes !== undefined && liveMinutes > task.estimateMinutes,
@@ -51,6 +68,8 @@
   class:done={task.completedAt !== undefined}
   class:picked={selected}
   class:tracking={isTracking}
+  class:p1={task.priority === 1 && task.completedAt === undefined}
+  class:child={child}
 >
   <input
     type="checkbox"
@@ -85,13 +104,20 @@
       aria-label={t('ariaEdit', { title: task.title })}
       onclick={() => onedit(task.id)}
     >
-      {task.title}
+      {#each titleParts as part, i (i)}{#if part.hit}<mark>{part.text}</mark>{:else}{part.text}{/if}{/each}
     </button>
-    {#if notePreview}
-      <span class="note-preview" title={task.notes}>📝 {notePreview}</span>
+    {#if noteFirstLine}
+      <span class="note-preview" title={task.notes}>📝
+        {#each noteParts as part, i (i)}{#if part.hit}<mark>{part.text}</mark>{:else}{part.text}{/if}{/each}
+      </span>
     {/if}
   </div>
   <span class="meta">
+    {#if subtaskInfo}
+      <span class="subtask-chip" aria-label={t('ariaSubtasks', subtaskInfo)}>
+        ▸ {subtaskInfo.done}/{subtaskInfo.total}
+      </span>
+    {/if}
     {#if task.priority}<span class="prio p{task.priority}">!{task.priority}</span>{/if}
     {#if task.estimateMinutes}
       <span class="estimate">{formatDuration(task.estimateMinutes, i18n.locale)}</span>
@@ -122,5 +148,14 @@
       >
     {/each}
     {#if listName}<span class="list-chip">{listName}</span>{/if}
+    {#if triageLists && ontriage && task.completedAt === undefined}
+      {#each triageLists as list (list.id)}
+        <button
+          class="triage-btn"
+          aria-label={t('ariaTriageTo', { title: task.title, name: list.name })}
+          onclick={() => ontriage(task.id, list.id)}>{list.name}</button
+        >
+      {/each}
+    {/if}
   </span>
 </li>

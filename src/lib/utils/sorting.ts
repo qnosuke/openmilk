@@ -1,6 +1,6 @@
 import type { Task } from '../db/schema';
 
-export type SortMode = 'due' | 'priority' | 'created';
+export type SortMode = 'due' | 'priority' | 'created' | 'added';
 
 /**
  * 表示順を並び替える。
@@ -8,6 +8,7 @@ export type SortMode = 'due' | 'priority' | 'created';
  * - due: 期限（なしは最後）→ 優先度 → 新しい順
  * - priority: 優先度 → 期限
  * - created: 追加の新しい順
+ * - added: 追加の古い順（INBOX 固定。先に入れたものから仕分ける）
  */
 export function sortTasks(tasks: Task[], mode: SortMode): Task[] {
   return [...tasks].sort((a, b) => compareTasks(a, b, mode));
@@ -18,6 +19,10 @@ export function compareTasks(a: Task, b: Task, mode: SortMode): number {
   const bDone = b.completedAt !== undefined;
   if (aDone !== bDone) return aDone ? 1 : -1;
   if (!aDone) {
+    if (mode === 'added') {
+      if (a.createdAt !== b.createdAt) return a.createdAt < b.createdAt ? -1 : 1;
+      return 0;
+    }
     if (mode === 'created') {
       return compareNewestFirst(a, b);
     }

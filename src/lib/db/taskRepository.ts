@@ -11,6 +11,8 @@ export interface NewTask {
   tags?: string[];
   estimateMinutes?: number;
   listId?: string;
+  /** 親タスクの id（サブタスクとして作る場合） */
+  parentId?: string;
 }
 
 function nowISO(): string {
@@ -30,6 +32,7 @@ export async function createTask(input: NewTask): Promise<Task> {
     tags: input.tags ?? [],
     estimateMinutes: input.estimateMinutes,
     listId: input.listId,
+    parentId: input.parentId,
     createdAt: now,
     updatedAt: now,
     deleted: 0,
@@ -292,7 +295,7 @@ export function observeLists(cb: (lists: List[]) => void): () => void {
 
 // --- バックアップ ---
 
-export const BACKUP_SCHEMA_VERSION = 3;
+export const BACKUP_SCHEMA_VERSION = 4;
 
 export interface BackupData {
   schemaVersion: number;

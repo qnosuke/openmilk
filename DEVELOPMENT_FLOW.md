@@ -202,7 +202,10 @@ OpenClaw などの AI エージェントが openmilk を操作できるように
 - サーバーを立てて REST API を生やすこと。ファイル連携 + ブラウザ自動化で実用上
   足りており、サーバーは複数デバイス同期とセットで v2 検討に回す
 
-## Phase 7: 公開（所要: 数時間）
+## Phase 7: 公開（✅ 実装済み: 2026-09-06・GitHub Pages）
+
+公開 URL: **https://qnosuke.github.io/openmilk/**
+（main への push で Actions が自動ビルド＆デプロイ。`.github/workflows/deploy.yml`）
 
 やること:
 

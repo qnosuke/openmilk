@@ -9,7 +9,8 @@ openmilk（ブラウザ駐在型タスク管理アプリ）をエージェント
 このアプリは「エージェントがタスクを整理し、人間はビューワーとして確認・微調整する」
 使い方を想定して設計されている。
 
-- アプリ URL: 環境設定 `OPENMILK_URL`（未設定なら `http://localhost:5173`）
+- アプリ URL: 環境設定 `OPENMILK_URL`（未設定なら `https://qnosuke.github.io/openmilk/`。
+  ローカル開発中は `http://localhost:5173`）
 - 操作は基本ブラウザ自動化で行う。UI は正しい HTML 要素と aria-label で構成されており、
   DOM スナップショットから確実に操作できる
 

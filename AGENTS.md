@@ -57,7 +57,9 @@ UI は日本語 / English / 中文の 3 言語（`src/lib/i18n.svelte.ts` の辞
 
 ## 開発環境
 
-- リポジトリ: https://github.com/qnosuke/openmilk（プライベート。main が最新）
+- リポジトリ: https://github.com/qnosuke/openmilk（main が最新）
+- 公開 URL: https://qnosuke.github.io/openmilk/（main への push で自動デプロイ。
+  GitHub Actions の `.github/workflows/deploy.yml` が担当）
 - 別の環境での初回セットアップ: `git clone` → `npm install` → `npm run dev`
   （http://localhost:5173）
 - タスクデータはブラウザの IndexedDB にあり、リポジトリには含まれない。

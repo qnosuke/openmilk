@@ -315,19 +315,47 @@ export async function exportAll(): Promise<BackupData> {
  * 同じ id のレコードは updatedAt が新しい方を採用し、同時刻なら
  * 取り込み側を優先する（変換ツールでフィールドを増やした再取り込みが反映される）。
  * 戻り値は取り込んだタスク数。
+ *
+ * 形式チェックは必須フィールド（createdAt/updatedAt/deleted）まで見る。
+ * 例えば RTM の生エクスポートは id/name だけなら通ってしまうため、
+ * タスクが全スキップされたのにリストだけ生のまま混入する事故を防ぐ。
  */
+function isValidTaskRecord(task: unknown): task is Task {
+  const t = task as Task | null;
+  return (
+    !!t &&
+    typeof t.id === 'string' &&
+    typeof t.title === 'string' &&
+    typeof t.createdAt === 'string' &&
+    typeof t.updatedAt === 'string' &&
+    (t.deleted === 0 || t.deleted === 1)
+  );
+}
+
+function isValidListRecord(list: unknown): list is List {
+  const l = list as List | null;
+  return (
+    !!l &&
+    typeof l.id === 'string' &&
+    typeof l.name === 'string' &&
+    typeof l.createdAt === 'string' &&
+    typeof l.updatedAt === 'string' &&
+    (l.deleted === 0 || l.deleted === 1)
+  );
+}
+
 export async function importBackup(data: BackupData): Promise<number> {
   let imported = 0;
   await db.transaction('rw', db.tasks, db.lists, async () => {
     for (const task of data.tasks ?? []) {
-      if (!task?.id || typeof task.title !== 'string') continue;
+      if (!isValidTaskRecord(task)) continue;
       const existing = await db.tasks.get(task.id);
       if (existing && existing.updatedAt > (task.updatedAt ?? '')) continue;
       await db.tasks.put(task);
       imported += 1;
     }
     for (const list of data.lists ?? []) {
-      if (!list?.id || typeof list.name !== 'string') continue;
+      if (!isValidListRecord(list)) continue;
       const existing = await db.lists.get(list.id);
       if (existing && existing.updatedAt > (list.updatedAt ?? '')) continue;
       // 既存が固定リストの場合、上書きで fixed が外れないようにする

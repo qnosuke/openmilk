@@ -68,8 +68,11 @@ UI は日本語 / English / 中文の 3 言語（`src/lib/i18n.svelte.ts` の辞
   データステータス欄で代用）。設定は localStorage `openmilk.pomodoro`
 - 自動バックアップは `src/lib/backupFolder.ts`（File System Access API・Chrome/Edge のみ）。
   フォルダハンドルは DB v4 の `settings` テーブルに保存。データ変更 3 秒後に
-  `openmilk-backup.json` をフォルダへ書き出し、起動時・フォーカス時に
-  `inbox.md`（1行=1タスク）/ `inbox.json`（BackupData）を取り込んで `imported/` へ移動する
+  `openmilk-backup.json` をフォルダへ書き出し、起動時・フォーカス時には
+  同じファイルを **LWW マージで自動復元**（同一 id は updatedAt 新しい方。無変化は
+  カウントしない）し、`inbox.md`（1行=1タスク）/ `inbox.json`（BackupData）を
+  取り込んで `imported/` へ移動する。フォルダを iCloud/Dropbox に置けば
+  複数環境の簡易同期として機能する
 - **`tasks` 状態には削除済み（deleted: 1）と完了済みも含まれる**。表示の絞り込みは
   UI 側（`App.svelte` の view タブとフィルタ）で行う。件数の集計や検索など
   データを数える処理には必ず `!task.deleted` と完了状態のガードを入れること

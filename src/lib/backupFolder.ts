@@ -1,5 +1,12 @@
 import { db } from './db/schema';
-import { createTask, exportAll, importBackup } from './db/taskRepository';
+import {
+  createTask,
+  exportAll,
+  importBackup,
+  isValidListRecord,
+  isValidTaskRecord,
+  type BackupData,
+} from './db/taskRepository';
 import { parseInboxLines } from './utils/inbox';
 import { parseTaskInput } from './utils/parseTask';
 
@@ -73,6 +80,8 @@ async function loadHandle(): Promise<FolderHandleLike | null> {
 
 async function queryPermission(handle: FolderHandleLike): Promise<PermissionState> {
   try {
+    // OPFS など権限概念のないハンドルは fully accessible として扱う
+    if (typeof handle.queryPermission !== 'function') return 'granted';
     return await handle.queryPermission({ mode: 'readwrite' });
   } catch {
     return 'prompt';
@@ -129,6 +138,47 @@ export async function backupNow(): Promise<'saved' | 'no-folder' | 'no-permissio
     return 'saved';
   } catch {
     return 'error';
+  }
+}
+
+/**
+ * フォルダの openmilk-backup.json から復元する（起動時・フォーカス時に呼ぶ簡易同期）。
+ * マージルールは ⚙ の読み込みと同じ LWW（同じ id は updatedAt の新しい方を採用）だが、
+ * 内容が変化しなかったレコード（既存と同一時刻）は数えないため、
+ * 何も変わらなかったときは 0 が返る。戻り値は実際に変化したタスク数。
+ */
+export async function restoreFromBackupFile(): Promise<number> {
+  const dir = await loadHandle();
+  if (!dir) return 0;
+  if ((await queryPermission(dir)) !== 'granted') return 0;
+  const file = await dir
+    .getFileHandle(BACKUP_FILE_NAME)
+    .then((h) => h.getFile())
+    .catch(() => null);
+  if (!file) return 0;
+  try {
+    const data = JSON.parse(await file.text()) as BackupData;
+    if (!Array.isArray(data.tasks)) return 0;
+    let changed = 0;
+    await db.transaction('rw', db.tasks, db.lists, async () => {
+      for (const task of data.tasks ?? []) {
+        if (!isValidTaskRecord(task)) continue;
+        const existing = await db.tasks.get(task.id);
+        if (existing && existing.updatedAt >= (task.updatedAt ?? '')) continue;
+        await db.tasks.put(task);
+        changed += 1;
+      }
+      for (const list of data.lists ?? []) {
+        if (!isValidListRecord(list)) continue;
+        const existing = await db.lists.get(list.id);
+        if (existing && existing.updatedAt >= (list.updatedAt ?? '')) continue;
+        await db.lists.put(existing?.fixed ? { ...list, fixed: 1 } : list);
+      }
+    });
+    return changed;
+  } catch {
+    // 壊れた JSON は無視する
+    return 0;
   }
 }
 

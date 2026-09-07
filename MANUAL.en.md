@@ -226,10 +226,17 @@ make this more useful.
 ⚙ → "Auto backup" → "Choose folder" picks a watch folder. After that:
 
 - Every change is auto-saved to `openmilk-backup.json` inside that folder
+- **On startup / when the app gets focus, data is restored from that backup file**
+  (merge keeps the newer version of each task, so nothing is overwritten away)
 - Drop an `inbox.md` into the folder and each line is imported as a task on startup /
-  when the app gets focus (one line = one task; markdown bullets like
-  `- buy milk tomorrow !1` are fine. Processed files move to an `imported/` subfolder)
+  focus (one line = one task; markdown bullets like `- buy milk tomorrow !1` are fine.
+  Processed files move to an `imported/` subfolder)
 - An `inbox.json` (the backup format below) is imported the same way
+
+**This doubles as simple multi-device sync**: put the folder in iCloud Drive or Dropbox
+and choose the same folder in openmilk on another Mac — launching the app pulls the
+data in (imports happen on startup and focus; deletions sync too, since they are
+logical deletes).
 
 This is also the agent interface: agents add tasks by writing `inbox.md` and read
 `openmilk-backup.json` for the current list. The data contract is published as

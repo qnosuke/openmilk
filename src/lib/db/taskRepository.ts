@@ -320,7 +320,7 @@ export async function exportAll(): Promise<BackupData> {
  * 例えば RTM の生エクスポートは id/name だけなら通ってしまうため、
  * タスクが全スキップされたのにリストだけ生のまま混入する事故を防ぐ。
  */
-function isValidTaskRecord(task: unknown): task is Task {
+export function isValidTaskRecord(task: unknown): task is Task {
   const t = task as Task | null;
   return (
     !!t &&
@@ -332,7 +332,7 @@ function isValidTaskRecord(task: unknown): task is Task {
   );
 }
 
-function isValidListRecord(list: unknown): list is List {
+export function isValidListRecord(list: unknown): list is List {
   const l = list as List | null;
   return (
     !!l &&

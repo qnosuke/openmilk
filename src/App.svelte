@@ -51,6 +51,7 @@
     importInboxFiles,
     isAutoBackupSupported,
     reconnectBackupFolder,
+    restoreFromBackupFile,
   } from './lib/backupFolder';
 
   const SORT_KEY = 'openmilk.sort';
@@ -673,11 +674,16 @@
     backupTimer = window.setTimeout(() => void backupNow(), 3000);
   }
 
-  /** inbox.md / inbox.json の取り込み + 現状の書き出し。起動時・フォーカス時に呼ぶ */
+  /** inbox.md / inbox.json の取り込み + フォルダのバックアップからの復元 + 書き出し。
+   *  起動時・フォーカス時・フォルダ設定直後に呼ぶ（これが他環境との簡易同期になる） */
   async function syncInboxAndBackup() {
     if (!autoBackup.folderName || autoBackup.needsPermission) return;
+    const restored = await restoreFromBackupFile();
     const imported = await importInboxFiles();
-    if (imported > 0) flashDataStatus(t('inboxImported', { n: imported }));
+    const parts: string[] = [];
+    if (restored > 0) parts.push(t('backupRestored', { n: restored }));
+    if (imported > 0) parts.push(t('inboxImported', { n: imported }));
+    if (parts.length > 0) flashDataStatus(parts.join(' / '));
     await backupNow();
   }
 

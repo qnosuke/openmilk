@@ -1111,12 +1111,23 @@ dialog.dialog::backdrop {
 /* --- INBOX 仕分けモード --- */
 
 .triage-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
   margin: 12px 0 0;
   padding: 8px 14px;
   font-size: 13px;
   color: #fff;
   background: #1d2530;
   border-radius: var(--radius);
+}
+
+.triage-keys {
+  font-size: 11.5px;
+  color: rgb(255 255 255 / 65%);
+  white-space: nowrap;
 }
 
 .nav-btn.inbox.triage {
@@ -1281,6 +1292,18 @@ dialog.dialog::backdrop {
   background: rgb(0 0 0 / 6%);
   border-radius: 999px;
   font-variant-numeric: tabular-nums;
+}
+
+/* --- キーボードカーソル（j/k） --- */
+
+.row.cursor {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* カーソル表示は .cursor クラスに任せるので、プログラムフォーカスの既定枠は消す */
+.row:focus {
+  outline: none;
 }
 
 /* --- 編集ダイアログ: サブタスク分割 --- */

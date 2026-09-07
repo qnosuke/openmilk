@@ -51,6 +51,7 @@ export interface List {
 export const db = new Dexie('openmilk') as Dexie & {
   tasks: EntityTable<Task, 'id'>;
   lists: EntityTable<List, 'id'>;
+  settings: EntityTable<{ key: string; value: unknown }, 'key'>;
 };
 
 // index: id（主キー）, その他は検索・ソートに使うものだけ
@@ -68,4 +69,12 @@ db.version(2).stores({
 db.version(3).stores({
   tasks: 'id, deleted, completedAt, due, *tags, listId',
   lists: 'id, deleted, order',
+});
+
+// v4: 設定（自動バックアップフォルダのハンドルなど）。バックアップ JSON の
+// schemaVersion とは別物なので、こちらは上がっても JSON 形式は変わらない
+db.version(4).stores({
+  tasks: 'id, deleted, completedAt, due, *tags, listId',
+  lists: 'id, deleted, order',
+  settings: 'key',
 });

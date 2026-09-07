@@ -129,6 +129,9 @@ INBOX is where you **dump thoughts first** and sort them later.
   in the sidebar inverts its colors)
 - Each task gets one-click buttons — `next action`, `waiting`, `someday` — to move it
   to that list instantly
+- **It works from the keyboard too**: `j`/`k` (or `↓`/`↑`) move the cursor, `1`/`2`/`3`
+  move the task to next action/waiting/someday, `x` completes, `e` edits, `Space` selects
+  (`Esc` clears). Globally, `a` jumps to the add field and `/` to search
 - INBOX order is **fixed to added order (oldest first)**, so you process what came in first
   (sorting other views is covered in [Sort order](#sort-order))
 
@@ -217,6 +220,22 @@ make this more useful.
 ## Backup and restore
 
 ⚙ → "Export" saves everything (including deleted tasks) into a single JSON file.
+
+### Auto backup (Chrome / Edge)
+
+⚙ → "Auto backup" → "Choose folder" picks a watch folder. After that:
+
+- Every change is auto-saved to `openmilk-backup.json` inside that folder
+- Drop an `inbox.md` into the folder and each line is imported as a task on startup /
+  when the app gets focus (one line = one task; markdown bullets like
+  `- buy milk tomorrow !1` are fine. Processed files move to an `imported/` subfolder)
+- An `inbox.json` (the backup format below) is imported the same way
+
+This is also the agent interface: agents add tasks by writing `inbox.md` and read
+`openmilk-backup.json` for the current list. The data contract is published as
+`openmilk.schema.json` (https://qnosuke.github.io/openmilk/openmilk.schema.json).
+
+### Export and import
 
 - **Restore / migrate**: "Import" merges idempotently — for the same task, the **newer**
   copy wins — so it is safe both to restore into an empty state and to merge with

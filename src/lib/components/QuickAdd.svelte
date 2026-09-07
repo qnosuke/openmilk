@@ -5,6 +5,13 @@
 
   let { onadd, onaddMany }: { onadd: (parsed: ParsedTask) => void; onaddMany?: (lines: string[]) => void } = $props();
 
+  let inputEl = $state<HTMLInputElement>();
+
+  /** ショートカット（a）から呼べるように入力欄へフォーカスさせる */
+  export function focus() {
+    inputEl?.focus();
+  }
+
   let text = $state('');
 
   const parsed = $derived(text.trim().length > 0 ? parseTaskInput(text) : undefined);
@@ -66,6 +73,7 @@
     placeholder={t('addPlaceholder')}
     aria-label={t('add')}
     bind:value={text}
+    bind:this={inputEl}
     onkeydown={handleKeydown}
     onpaste={handlePaste}
   />

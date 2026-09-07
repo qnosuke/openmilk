@@ -42,6 +42,15 @@
   } from './lib/utils/pomodoro';
   import { sortTasks, type SortMode } from './lib/utils/sorting';
   import { splitOneLevel } from './lib/utils/subtasks';
+  import {
+    backupNow,
+    chooseBackupFolder,
+    disconnectBackupFolder,
+    getBackupFolderInfo,
+    importInboxFiles,
+    isAutoBackupSupported,
+    reconnectBackupFolder,
+  } from './lib/backupFolder';
 
   const SORT_KEY = 'openmilk.sort';
   const POMODORO_KEY = 'openmilk.pomodoro';
@@ -64,6 +73,16 @@
   let nowTick = $state(Date.now());
   let bulkTag = $state('');
   let pomodoro = $state<PomodoroSettings>(loadPomodoro());
+  let quickAddRef = $state<{ focus(): void }>();
+  let sidebarRef = $state<{ focusSearch(): void }>();
+  /** キーボードカーソル（j/k）が当たっている renderedRows のインデックス。-1 は未選択 */
+  let cursorIndex = $state(-1);
+  const autoBackup = $state({
+    supported: isAutoBackupSupported(),
+    folderName: null as string | null,
+    needsPermission: false,
+  });
+  let backupTimer: number | undefined;
 
   function toggleTrash() {
     view = view === 'trash' ? 'active' : 'trash';
@@ -135,13 +154,20 @@
     const unsubscribeTasks = observeVisibleTasks((list) => {
       tasks = list;
       loaded = true;
+      scheduleAutoBackup();
     });
     const unsubscribeLists = observeLists((list) => {
       lists = list;
+      scheduleAutoBackup();
     });
     void handleAddParam();
     void ensureFixedLists();
     void purgeExpiredTrash();
+    // 自動バックアップ: 保存済みフォルダがあれば復元して inbox を取り込む
+    void (async () => {
+      await refreshAutoBackup();
+      if (autoBackup.folderName && !autoBackup.needsPermission) await syncInboxAndBackup();
+    })();
     // テキストファイル・複数行テキストのドロップで INBOX 一括追加
     window.addEventListener('dragover', handleDragOver);
     window.addEventListener('drop', handleDrop);
@@ -280,8 +306,25 @@
   /** 親が同じビューに見えているサブタスクは行から取り除き、親の下にインデント表示する */
   const visibleTasks = $derived(oneLevel.rows);
 
-  /** 親タスク id → そのビューで見えているサブタスク（表示順に従う） */
-  const childRows = $derived(oneLevel.childrenByParent);
+  /** 実際に描画する行（親+子を並べたフラットな列。キーボードカーソルもこの順） */
+  const renderedRows = $derived.by(() => {
+    const list: { task: Task; isChild: boolean }[] = [];
+    for (const task of oneLevel.rows) {
+      list.push({ task, isChild: false });
+      for (const child of oneLevel.childrenByParent.get(task.id) ?? []) {
+        list.push({ task: child, isChild: true });
+      }
+    }
+    return list;
+  });
+
+  $effect(() => {
+    if (cursorIndex >= renderedRows.length) cursorIndex = renderedRows.length - 1;
+  });
+
+  $effect(() => {
+    if (!isTriage && cursorIndex !== -1) cursorIndex = -1;
+  });
 
   /** 親タスク id → サブタスク進捗（削除済みを除く） */
   const subtaskProgress = $derived.by(() => {
@@ -467,6 +510,104 @@
     await updateTask(id, { listId });
   }
 
+  // --- キーボードショートカット ---
+  // 最小セット: / = 検索へ、a = 追加入力へ（全体）。
+  // j/k = 行移動、1/2/3 = next action/waiting/someday へ仕分け、x = 完了、
+  // e = 編集、Space = 選択（仕分けモードのみ）。
+
+  function isTextEntryTarget(target: EventTarget | null): boolean {
+    return (
+      target instanceof HTMLElement &&
+      (target.tagName === 'TEXTAREA' ||
+        target.tagName === 'INPUT' ||
+        target.tagName === 'SELECT' ||
+        target.isContentEditable)
+    );
+  }
+
+  function focusCursorRow() {
+    const row = renderedRows[cursorIndex];
+    if (!row) return;
+    (document.querySelector(`[data-task-id="${row.task.id}"]`) as HTMLElement | null)?.focus();
+  }
+
+  function handleKeydown(event: KeyboardEvent) {
+    // IME 変換の確定に使われた Enter なども拾わない（keyCode 229 は Safari のレガシー値）
+    if (event.isComposing || event.keyCode === 229) return;
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
+    if (editingId !== null) return; // 編集ダイアログ中はデフォルトの操作に任せる
+    if (isTextEntryTarget(event.target)) return;
+
+    if (event.key === '/') {
+      event.preventDefault();
+      sidebarRef?.focusSearch();
+      return;
+    }
+    if (event.key === 'a' || event.key === 'A') {
+      event.preventDefault();
+      quickAddRef?.focus();
+      return;
+    }
+    if (!isTriage || renderedRows.length === 0) return;
+
+    const clamp = (i: number) => Math.max(0, Math.min(renderedRows.length - 1, i));
+    const current =
+      cursorIndex >= 0 && cursorIndex < renderedRows.length ? renderedRows[cursorIndex] : undefined;
+
+    switch (event.key) {
+      case 'j':
+      case 'ArrowDown':
+        event.preventDefault();
+        cursorIndex = clamp(cursorIndex + 1);
+        focusCursorRow();
+        break;
+      case 'k':
+      case 'ArrowUp':
+        event.preventDefault();
+        cursorIndex = clamp(cursorIndex <= 0 ? 0 : cursorIndex - 1);
+        focusCursorRow();
+        break;
+      case '1':
+      case '2':
+      case '3': {
+        const target = triageLists[Number(event.key) - 1];
+        if (current && target) {
+          event.preventDefault();
+          void moveTriage(current.task.id, target.id);
+        }
+        break;
+      }
+      case 'x':
+        if (current) {
+          event.preventDefault();
+          void setCompleted(current.task.id, true);
+        }
+        break;
+      case 'e':
+        if (current) {
+          event.preventDefault();
+          editingId = current.task.id;
+        }
+        break;
+      case ' ':
+        if (current) {
+          event.preventDefault();
+          selectedIds = selectedIds.includes(current.task.id)
+            ? selectedIds.filter((sid) => sid !== current.task.id)
+            : [...selectedIds, current.task.id];
+        }
+        break;
+      case 'Escape':
+        if (selectedIds.length > 0) {
+          event.preventDefault();
+          selectedIds = [];
+        } else if (cursorIndex !== -1) {
+          cursorIndex = -1;
+        }
+        break;
+    }
+  }
+
   // --- タグの一括追加・削除 ---
   async function applyBulkTag(add: boolean) {
     const tag = bulkTag.trim().replace(/^#/, '');
@@ -502,6 +643,51 @@
       added += 1;
     }
     if (added > 0) flashDataStatus(t('splitAdded', { n: added }));
+  }
+
+  // --- 自動バックアップ（File System Access 対応ブラウザのみ） ---
+
+  async function refreshAutoBackup() {
+    const info = await getBackupFolderInfo();
+    autoBackup.folderName = info.folderName;
+    autoBackup.needsPermission = info.needsPermission;
+  }
+
+  /** データ変更のたびに呼ばれ、少し待ってからフォルダへ書き出す */
+  function scheduleAutoBackup() {
+    if (!autoBackup.folderName || autoBackup.needsPermission) return;
+    window.clearTimeout(backupTimer);
+    backupTimer = window.setTimeout(() => void backupNow(), 3000);
+  }
+
+  /** inbox.md / inbox.json の取り込み + 現状の書き出し。起動時・フォーカス時に呼ぶ */
+  async function syncInboxAndBackup() {
+    if (!autoBackup.folderName || autoBackup.needsPermission) return;
+    const imported = await importInboxFiles();
+    if (imported > 0) flashDataStatus(t('inboxImported', { n: imported }));
+    await backupNow();
+  }
+
+  async function handleChooseBackupFolder() {
+    try {
+      const name = await chooseBackupFolder();
+      if (!name) return;
+      await refreshAutoBackup();
+      await syncInboxAndBackup();
+    } catch {
+      // フォルダ選択をキャンセルしただけなので無視する
+    }
+  }
+
+  async function handleReconnectBackupFolder() {
+    await reconnectBackupFolder();
+    await refreshAutoBackup();
+    await syncInboxAndBackup();
+  }
+
+  async function handleDisconnectBackupFolder() {
+    await disconnectBackupFolder();
+    await refreshAutoBackup();
   }
 
   const allVisibleSelected = $derived(
@@ -683,8 +869,11 @@
   }
 </script>
 
+<svelte:window onkeydown={handleKeydown} onfocus={() => void syncInboxAndBackup()} />
+
 <div class="layout">
   <Sidebar
+    bind:this={sidebarRef}
     {lists}
     selected={selected}
     {counts}
@@ -700,7 +889,11 @@
     completedCount={completedCount}
     triageActive={isTriage}
     {pomodoro}
+    {autoBackup}
     onsetPomodoro={setPomodoro}
+    onChooseBackupFolder={() => void handleChooseBackupFolder()}
+    onReconnectBackupFolder={() => void handleReconnectBackupFolder()}
+    onDisconnectBackupFolder={() => void handleDisconnectBackupFolder()}
     onselect={(id) => (selected = id)}
     oncreate={addList}
     ondelete={removeList}
@@ -780,12 +973,13 @@
 
     {#if isTriage}
       <div class="triage-banner" role="status">
-        📥 {t('triageMode')} — {t('triageHint')}
+        <span>📥 {t('triageMode')} — {t('triageHint')}</span>
+        <span class="triage-keys">⌨ j/k · 1/2/3 · x · e · Space</span>
       </div>
     {/if}
 
     {#if view !== 'stats'}
-      <QuickAdd onadd={addTask} onaddMany={(lines) => void addLines(lines)} />
+      <QuickAdd bind:this={quickAddRef} onadd={addTask} onaddMany={(lines) => void addLines(lines)} />
 
     {#if selectedIds.length > 0}
       <div class="bulk-bar">
@@ -846,7 +1040,7 @@
       </p>
     {:else}
       <ul class="tasks">
-        {#snippet row(t: Task, isChild: boolean)}
+        {#snippet taskRow(t: Task, isChild: boolean, isCursor: boolean)}
           <TaskRow
             task={t}
             listName={lists.find((l) => l.id === t.listId)?.name}
@@ -857,6 +1051,7 @@
             searchQuery={searchQuery}
             triageLists={isTriage ? triageLists : undefined}
             child={isChild}
+            cursor={isCursor}
             subtaskInfo={subtaskProgress.get(t.id)}
             ontoggle={(id, checked) =>
               (selectedIds = checked
@@ -869,11 +1064,8 @@
             ontriage={moveTriage}
           />
         {/snippet}
-        {#each visibleTasks as task (task.id)}
-          {@render row(task, false)}
-          {#each childRows.get(task.id) ?? [] as sub (sub.id)}
-            {@render row(sub, true)}
-          {/each}
+        {#each renderedRows as entry, i (entry.task.id)}
+          {@render taskRow(entry.task, entry.isChild, i === cursorIndex)}
         {/each}
       </ul>
       <p class="footer">

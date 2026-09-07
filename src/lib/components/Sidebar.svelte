@@ -24,6 +24,7 @@
     search,
     triageActive,
     pomodoro,
+    autoBackup,
     onsearch,
     onselect,
     oncreate,
@@ -36,6 +37,9 @@
     onToggleTrash,
     onDeleteCompleted,
     onsetPomodoro,
+    onChooseBackupFolder,
+    onReconnectBackupFolder,
+    onDisconnectBackupFolder,
   }: {
     lists: List[];
     selected: string;
@@ -57,6 +61,8 @@
     triageActive: boolean;
     /** ポモドーロ設定（⚙ から編集） */
     pomodoro: PomodoroSettings;
+    /** 自動バックアップフォルダの状態 */
+    autoBackup: { supported: boolean; folderName: string | null; needsPermission: boolean };
     onselect: (id: string) => void;
     oncreate: (name: string) => void;
     ondelete: (id: string) => void;
@@ -73,13 +79,25 @@
     onDeleteCompleted: () => void;
     /** ポモドーロ設定の 1 項目を変更する */
     onsetPomodoro: (key: keyof PomodoroSettings, value: number) => void;
+    /** 自動バックアップ: フォルダを選ぶ（ユーザー操作の中で呼ぶ） */
+    onChooseBackupFolder: () => void;
+    /** 権限が切れたフォルダに再接続する */
+    onReconnectBackupFolder: () => void;
+    /** 自動バックアップをやめる */
+    onDisconnectBackupFolder: () => void;
   } = $props();
 
   let fileInput = $state<HTMLInputElement>();
   let detailsEl = $state<HTMLDetailsElement>();
+  let searchEl = $state<HTMLInputElement>();
   let name = $state('');
   let confirmWipe = $state(false);
   let wipeTimer: number | undefined;
+
+  /** ショートカット（/）から呼べるように検索欄へフォーカスさせる */
+  export function focusSearch() {
+    searchEl?.focus();
+  }
 
   function submit(event?: SubmitEvent) {
     event?.preventDefault();
@@ -233,6 +251,7 @@
     type="search"
     placeholder={t('searchPlaceholder')}
     aria-label={t('search')}
+    bind:this={searchEl}
     value={search}
     oninput={(e) => onsearch(e.currentTarget.value)}
   />
@@ -278,6 +297,29 @@
       {#if dataStatus}
         <p class="data-status" role="status">{dataStatus}</p>
       {/if}
+      <div class="backup-folder">
+        <div class="section-label">{t('autoBackupLabel')}</div>
+        {#if !autoBackup.supported}
+          <p class="data-status">{t('autoBackupUnsupported')}</p>
+        {:else if autoBackup.folderName}
+          <p class="data-status">📁 {autoBackup.folderName}</p>
+          <div class="data-actions">
+            {#if autoBackup.needsPermission}
+              <button type="button" onclick={onReconnectBackupFolder}>
+                {t('autoBackupReconnect')}
+              </button>
+            {/if}
+            <button type="button" onclick={onDisconnectBackupFolder}>
+              {t('autoBackupDisconnect')}
+            </button>
+          </div>
+        {:else}
+          <div class="data-actions">
+            <button type="button" onclick={onChooseBackupFolder}>{t('autoBackupChoose')}</button>
+          </div>
+          <p class="data-status">{t('autoBackupHint')}</p>
+        {/if}
+      </div>
       {#if tagCounts.length > 0}
         <div class="hidden-tags">
           <div class="section-label">{t('hiddenTagsLabel')}</div>

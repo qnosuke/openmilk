@@ -10,6 +10,7 @@
     activeTag,
     mutedTags,
     selected,
+    cursor,
     liveMinutes,
     searchQuery,
     triageLists,
@@ -31,6 +32,8 @@
     mutedTags?: string[];
     /** 一括バーで選択中か */
     selected?: boolean;
+    /** キーボードカーソル（j/k）が当たっている行 */
+    cursor?: boolean;
     /** 計測中の経過（分）。このタスクが計測中のときだけ渡る */
     liveMinutes?: number;
     /** 検索ワード（タイトルとメモの該当部分をハイライト） */
@@ -70,6 +73,9 @@
   class:tracking={isTracking}
   class:p1={task.priority === 1 && task.completedAt === undefined}
   class:child={child}
+  class:cursor={cursor}
+  data-task-id={task.id}
+  tabindex="-1"
 >
   <input
     type="checkbox"

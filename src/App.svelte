@@ -243,9 +243,21 @@
   }
 
   async function importData(file: File) {
+    let data: unknown;
     try {
-      const data = JSON.parse(await file.text());
-      const count = await importBackup(data);
+      data = JSON.parse(await file.text());
+    } catch {
+      // JSON として壊れている（転送中の破損など）
+      flashDataStatus(t('importInvalid'));
+      return;
+    }
+    if (typeof data !== 'object' || data === null || !Array.isArray((data as BackupData).tasks)) {
+      // JSON ではあるが openmilk 形式ではない（RTM のエクスポートをそのまま入れた等）
+      flashDataStatus(t('importNotOpenmilk'));
+      return;
+    }
+    try {
+      const count = await importBackup(data as BackupData);
       // 移行元の固定リストが重複して入る可能性があるため、すぐに自己修復させる
       await ensureFixedLists();
       flashDataStatus(t('importDone', { n: count }));

@@ -25,6 +25,7 @@
     startTaskTimer,
     stopTaskTimer,
     updateTask,
+    type BackupData,
   } from './lib/db/taskRepository';
   import {
     addDays,

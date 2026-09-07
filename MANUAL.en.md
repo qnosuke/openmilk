@@ -90,7 +90,8 @@ Checkboxes in openmilk mean **selection**, not "done":
 
 The same bar also offers:
 
-- **Postpone**: "Postpone {n}" shifts the due date by one day (undated tasks become tomorrow)
+- **Postpone**: choose **1 day / 1 week / 1 month**
+  (undated tasks become tomorrow)
 - **Bulk tag add/remove**: type a tag name, then "+ Tag" or "− Tag" — applied to every
   selected task
 

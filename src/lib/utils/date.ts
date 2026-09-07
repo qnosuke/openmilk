@@ -40,6 +40,15 @@ export function addDays(iso: string, days: number): string {
   return toISODate(d);
 }
 
+/** iso に months か月を加える。月末日は翌月に合わせて詰める（1/31 + 1ヶ月 → 2/28） */
+export function addMonths(iso: string, months: number): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  const target = new Date(y, m - 1 + months, 1);
+  const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+  target.setDate(Math.min(d, lastDay));
+  return toISODate(target);
+}
+
 /** iso が今日から何日後か（過去は負） */
 export function daysFromToday(iso: string, today: Date = new Date()): number {
   const a = fromISODate(iso).getTime();

@@ -305,6 +305,29 @@ main {
   cursor: pointer;
 }
 
+.postpone-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.postpone-group .bulk-postpone {
+  padding: 6px 9px;
+  font-size: 12px;
+  font-family: inherit;
+}
+
+.postpone-group .bulk-postpone:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.postpone-label {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
 /* --- タグクラウド --- */
 
 .section-label {

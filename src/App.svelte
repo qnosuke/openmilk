@@ -26,6 +26,7 @@
     stopTaskTimer,
     updateTask,
     type BackupData,
+    type PostponeAmount,
   } from './lib/db/taskRepository';
   import {
     addDays,
@@ -744,9 +745,9 @@
     selectedIds = [];
   }
 
-  async function postponeSelected() {
+  async function postponeSelected(amount: PostponeAmount) {
     const ids = [...selectedIds];
-    await postponeTasks(ids);
+    await postponeTasks(ids, amount);
     selectedIds = [];
   }
 
@@ -1022,9 +1023,27 @@
           <button class="bulk-complete" onclick={completeSelected}>
             {t('completeN', { n: selectedIds.length })}
           </button>
-          <button class="bulk-postpone" onclick={postponeSelected}>
-            {t('postponeN', { n: selectedIds.length })}
-          </button>
+          <span class="postpone-group" role="group" aria-label={t('postponeAria')}>
+            <span class="postpone-label">{t('postponeLabel')}</span>
+            <button
+              class="bulk-postpone"
+              onclick={() => void postponeSelected({ days: 1 })}
+            >
+              {t('postpone1d')}
+            </button>
+            <button
+              class="bulk-postpone"
+              onclick={() => void postponeSelected({ days: 7 })}
+            >
+              {t('postpone1w')}
+            </button>
+            <button
+              class="bulk-postpone"
+              onclick={() => void postponeSelected({ months: 1 })}
+            >
+              {t('postpone1m')}
+            </button>
+          </span>
           <input
             class="bulk-tag-input"
             type="text"

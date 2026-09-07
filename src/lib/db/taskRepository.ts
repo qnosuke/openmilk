@@ -1,5 +1,11 @@
 import { liveQuery } from 'dexie';
 import { db, type List, type Task } from './schema';
+import { addDays, addMonths, todayISO } from '../utils/date';
+
+export interface PostponeAmount {
+  days?: number;
+  months?: number;
+}
 
 export interface NewTask {
   title: string;
@@ -78,31 +84,23 @@ export async function softDeleteTask(id: string): Promise<void> {
   await updateTask(id, { deleted: 1 });
 }
 
-/** 選択したタスクを1日延期する。期限が無いものは「明日」になる */
-export async function postponeTasks(ids: string[], days = 1): Promise<void> {
+/** 選択したタスクを延期する。期限に days 日と months か月を加算する（期限が無いものは「明日」） */
+export async function postponeTasks(ids: string[], amount: PostponeAmount = { days: 1 }): Promise<void> {
+  const days = amount.days ?? 0;
+  const months = amount.months ?? 0;
   await db.transaction('rw', db.tasks, async () => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + days);
-    const tomorrowISO = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
     for (const id of ids) {
       const task = await db.tasks.get(id);
       if (!task) continue;
-      task.due = task.due
-        ? addDaysISO(task.due, days)
-        : tomorrowISO;
+      task.due = task.due ? addMonths(addDays(task.due, days), months) : tomorrowISO();
       task.updatedAt = nowISO();
       await db.tasks.put(task);
     }
   });
 }
 
-function addDaysISO(iso: string, days: number): string {
-  const d = new Date(iso + 'T00:00:00');
-  d.setDate(d.getDate() + days);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+function tomorrowISO(): string {
+  return addDays(todayISO(), 1);
 }
 
 /** 計測中の経過を trackedMinutes に確定させ、timerStartedAt を空にする */

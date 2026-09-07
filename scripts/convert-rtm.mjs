@@ -24,6 +24,17 @@ if (!input) {
 const rtm = JSON.parse(readFileSync(input, 'utf8'));
 const SKIP_LIST_NAMES = new Set(['Inbox', 'Sent']);
 
+// 構造の事前チェック（エクスポート形式が想定と違うときに分かりやすく失敗させる）
+if (!Array.isArray(rtm.tasks) || !Array.isArray(rtm.lists)) {
+  console.error('RTM のエクスポートとして認識できません（tasks / lists の配列がありません）。');
+  console.error(`トップレベルのキー: ${Object.keys(rtm).join(', ') || '(なし)'}`);
+  if (rtm.tasks && typeof rtm.tasks === 'object') {
+    console.error(`tasks のキー: ${Object.keys(rtm.tasks).join(', ')}`);
+  }
+  console.error('Export は RTM の設定歯車 → Account settings → Export →「Download Export」（JSON）で取得してください。');
+  process.exit(1);
+}
+
 // --- リスト ---
 const lists = [];
 const listIdMap = new Map(); // RTM list id -> openmilk list id（INBOX 合流分は undefined）
@@ -131,7 +142,7 @@ for (const t of rtm.tasks ?? []) {
 }
 
 const backup = {
-  schemaVersion: 3,
+  schemaVersion: 4,
   exportedAt: new Date().toISOString(),
   tasks,
   lists,

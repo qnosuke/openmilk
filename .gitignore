@@ -23,3 +23,9 @@ dist-ssr
 *.sln
 *.sw?
 .video_agent/
+
+# 個人データ（タスクはリポジトリに載せない）
+openmilk-import*.json
+openmilk-backup*.json
+openmilk-backup-rtm*.json
+rtm*.json

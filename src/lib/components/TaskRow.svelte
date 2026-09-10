@@ -61,6 +61,11 @@
   const titleParts = $derived(splitHighlight(task.title, searchQuery));
   const noteParts = $derived(splitHighlight(noteFirstLine, searchQuery));
   const isTracking = $derived(liveMinutes !== undefined);
+  const dueToday = $derived(
+    task.completedAt === undefined &&
+      task.due !== undefined &&
+      daysFromToday(task.due) === 0,
+  );
   const overEstimate = $derived(
     !!task.estimateMinutes && liveMinutes !== undefined && liveMinutes > task.estimateMinutes,
   );
@@ -124,7 +129,6 @@
         ▸ {subtaskInfo.done}/{subtaskInfo.total}
       </span>
     {/if}
-    {#if task.priority}<span class="prio p{task.priority}">!{task.priority}</span>{/if}
     {#if task.estimateMinutes}
       <span class="estimate">{formatDuration(task.estimateMinutes, i18n.locale)}</span>
     {/if}
@@ -141,7 +145,7 @@
       </span>
     {/if}
     {#if task.due}
-      <span class="due" class:overdue>
+      <span class="due" class:overdue class:due-today={dueToday}>
         {formatDue(task.due, i18n.locale)}{task.dueTime ? ` ${task.dueTime}` : ''}
       </span>
     {/if}

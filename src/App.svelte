@@ -296,10 +296,9 @@
       } else if (tagFilter !== null && !task.tags.includes(tagFilter)) return false;
       // 非表示タグのついたタスクは全部のビューから消える
       if (task.tags.some((tag) => mutedTags.includes(tag))) return false;
-      // 通常ビューは未完了だけ。完了済みは「完了」タブで見る
-      if (view === 'active' ? task.completedAt !== undefined : task.completedAt === undefined) {
-        return false;
-      }
+      // 通常ビューは未完了だけ。完了ビューは完了だけ。ゴミ箱は完了状態を問わず出す
+      if (view === 'active' && task.completedAt !== undefined) return false;
+      if (view === 'completed' && task.completedAt === undefined) return false;
       if (q) {
         const haystack = `${task.title}\n${task.notes ?? ''}\n${task.tags.join(' ')}`.toLowerCase();
         if (!haystack.includes(q)) return false;

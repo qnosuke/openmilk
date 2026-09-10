@@ -25,8 +25,9 @@ export function toISODate(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-export function todayISO(): string {
-  return toISODate(new Date());
+/** 基準日のローカル日付を 'YYYY-MM-DD' に整形（省略時は今日） */
+export function todayISO(today: Date = new Date()): string {
+  return toISODate(today);
 }
 
 export function fromISODate(iso: string): Date {

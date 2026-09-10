@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import QuickAdd from './lib/components/QuickAdd.svelte';
-  import Sidebar, { UNTAGGED } from './lib/components/Sidebar.svelte';
+  import Sidebar from './lib/components/Sidebar.svelte';
   import TaskEditDialog, { type TaskEdits } from './lib/components/TaskEditDialog.svelte';
   import TaskRow from './lib/components/TaskRow.svelte';
   import { i18n, t } from './lib/i18n.svelte';
@@ -25,14 +25,21 @@
     stopTaskTimer,
     updateTask,
   } from './lib/db/taskRepository';
-  import {
-    addDays,
-    formatDuration,
-    formatTodayLong,
-    fromISODate,
-    todayISO,
-  } from './lib/utils/date';
+  import { addDays, formatDuration, formatTodayLong, todayISO } from './lib/utils/date';
   import { parseTaskInput, type ParsedTask } from './lib/utils/parseTask';
+  import {
+    UNTAGGED,
+    visibleTasksOf,
+    rangeCountsOf,
+    countByList,
+    tagCountsOf,
+    untaggedCountOf,
+    completedCountOf,
+    todayMinutesOf,
+    type View,
+    type DueFilter,
+  } from './lib/utils/taskFilter';
+  import { collectDueReminders } from './lib/utils/reminders';
   import { sortTasks, type SortMode } from './lib/utils/sorting';
 
   const SORT_KEY = 'openmilk.sort';
@@ -44,12 +51,12 @@
   let editingId = $state<string | null>(null);
   let sortMode = $state<SortMode>(loadSortMode());
   let dataStatus = $state('');
-  let dueFilter = $state<'overdue' | 'today' | 'tomorrow' | 'week' | null>(null);
+  let dueFilter = $state<DueFilter>(null);
   let tagFilter = $state<string | null>(null);
   let searchQuery = $state('');
   let selectedIds = $state<string[]>([]);
   let mutedTags = $state<string[]>(loadMutedTags());
-  let view = $state<'active' | 'completed' | 'trash'>('active');
+  let view = $state<View>('active');
   let nowTick = $state(Date.now());
 
   function toggleTrash() {
@@ -194,112 +201,39 @@
     { value: 'created', label: t('sortCreated') },
   ] as const);
 
-  const visibleTasks = $derived.by(() => {
-    const t0 = todayISO();
-    const tomorrow = addDays(t0, 1);
-    const weekEnd = addDays(t0, 7);
-    const q = searchQuery.trim().toLowerCase();
-    const filtered = tasks.filter((task) => {
-      // ゴミ箱ビューでは削除済みだけ、他のビューでは削除済みを除く
-      if (view === 'trash' ? !task.deleted : task.deleted) return false;
-      const inSelectedList =
-        selected === 'all' || (selected === 'inbox' ? !task.listId : task.listId === selected);
-      if (!inSelectedList) return false;
-      if (tagFilter === UNTAGGED) {
-        if (task.tags.length > 0) return false;
-      } else if (tagFilter !== null && !task.tags.includes(tagFilter)) return false;
-      // 非表示タグのついたタスクは全部のビューから消える
-      if (task.tags.some((tag) => mutedTags.includes(tag))) return false;
-      // 通常ビューは未完了だけ。完了済みは「完了」タブで見る
-      if (view === 'active' ? task.completedAt !== undefined : task.completedAt === undefined) {
-        return false;
-      }
-      if (q) {
-        const haystack = `${task.title}\n${task.notes ?? ''}\n${task.tags.join(' ')}`.toLowerCase();
-        if (!haystack.includes(q)) return false;
-      }
-      if (dueFilter === null) return true;
-      if (!task.due) return false;
-      // 期限切れは独立ボタン。今日=当日のみ
-      if (dueFilter === 'overdue') return task.due < t0;
-      if (dueFilter === 'today') return task.due === t0;
-      if (dueFilter === 'tomorrow') return task.due === tomorrow;
-      return task.due >= t0 && task.due <= weekEnd;
-    });
-    return sortTasks(filtered, sortMode);
-  });
+  const visibleTasks = $derived(
+    visibleTasksOf(tasks, {
+      view,
+      selected,
+      tagFilter,
+      mutedTags,
+      searchQuery,
+      dueFilter,
+      sortMode,
+    }),
+  );
 
   /** サイドバーの期間タイルに表示する未完了件数 */
-  const rangeCounts = $derived.by(() => {
-    const t0 = todayISO();
-    const tomorrow = addDays(t0, 1);
-    const weekEnd = addDays(t0, 7);
-    let overdue = 0;
-    let today = 0;
-    let tomorrowCount = 0;
-    let week = 0;
-    for (const task of tasks) {
-      if (task.completedAt !== undefined || task.deleted || !task.due) continue;
-      if (task.due < t0) overdue += 1;
-      if (task.due === t0) today += 1;
-      if (task.due === tomorrow) tomorrowCount += 1;
-      if (task.due >= t0 && task.due <= weekEnd) week += 1;
-    }
-    return { overdue, today, tomorrow: tomorrowCount, week };
-  });
+  const rangeCounts = $derived(rangeCountsOf(tasks));
 
   const remaining = $derived(visibleTasks.filter((task) => task.completedAt === undefined).length);
 
-  const counts = $derived.by(() => {
-    const result: Record<string, number> = { all: 0, inbox: 0 };
-    for (const task of tasks) {
-      if (task.completedAt !== undefined || task.deleted) continue;
-      result.all += 1;
-      if (task.listId) result[task.listId] = (result[task.listId] ?? 0) + 1;
-      else result.inbox += 1;
-    }
-    return result;
-  });
+  const counts = $derived(countByList(tasks));
 
   /**
    * フッターの「今日の作業予定」: 今の表示コンテキスト（リスト・タグ絞り込み・
    * ミュート）で見えている、今日期限の未完了タスクの見積もり合計
    */
-  const todayMinutes = $derived.by(() => {
-    const t0 = todayISO();
-    return tasks
-      .filter((task) => {
-        if (task.completedAt !== undefined || task.deleted) return false;
-        if (selected !== 'all') {
-          const inList = selected === 'inbox' ? !task.listId : task.listId === selected;
-          if (!inList) return false;
-        }
-        if (tagFilter && !task.tags.includes(tagFilter)) return false;
-        if (mutedTags.some((tag) => task.tags.includes(tag))) return false;
-        return task.due !== undefined && task.due <= t0 && !!task.estimateMinutes;
-      })
-      .reduce((sum, task) => sum + (task.estimateMinutes ?? 0), 0);
-  });
+  const todayMinutes = $derived(
+    todayMinutesOf(tasks, { selected, tagFilter, mutedTags }),
+  );
 
   /** サイドバーのタグクラウド: 未完了タスクのタグ出現数（多い順） */
-  const tagCounts = $derived.by(() => {
-    const map = new Map<string, number>();
-    for (const task of tasks) {
-      if (task.completedAt !== undefined || task.deleted) continue;
-      for (const tag of task.tags) map.set(tag, (map.get(tag) ?? 0) + 1);
-    }
-    return [...map.entries()]
-      .map(([name, count]) => ({ name, count, muted: mutedTags.includes(name) }))
-      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
-  });
+  const tagCounts = $derived(tagCountsOf(tasks, mutedTags));
 
-  const untaggedCount = $derived(
-    tasks.filter((t) => t.completedAt === undefined && t.tags.length === 0).length,
-  );
+  const untaggedCount = $derived(untaggedCountOf(tasks));
 
-  const completedCount = $derived(
-    tasks.filter((t) => t.completedAt !== undefined && !t.deleted).length,
-  );
+  const completedCount = $derived(completedCountOf(tasks));
 
   function toggleMutedTag(tag: string) {
     mutedTags = mutedTags.includes(tag) ? mutedTags.filter((t) => t !== tag) : [...mutedTags, tag];
@@ -407,15 +341,7 @@
     if (selected === id) selected = 'inbox';
   }
 
-  // --- リマインダー ---
-  function dueMomentMs(task: Task): number | null {
-    if (!task.due) return null;
-    const [h, m] = (task.dueTime ?? '09:00').split(':').map(Number);
-    const d = fromISODate(task.due);
-    d.setHours(h, m ?? 0, 0, 0);
-    return d.getTime();
-  }
-
+  // --- リマインダー（発火判定は utils/reminders.ts、副作用はここで行う） ---
   function checkReminders() {
     const now = Date.now();
     let notified: Record<string, number> = {};
@@ -424,15 +350,7 @@
     } catch {
       notified = {};
     }
-    for (const task of tasks) {
-      if (task.completedAt !== undefined || task.deleted || !task.remindMinutesBefore) continue;
-      const moment = dueMomentMs(task);
-      if (moment === null) continue;
-      const fireAt = moment - task.remindMinutesBefore * 60_000;
-      // 予定時刻を過ぎてから6時間以内のリマインダーを1回だけ通知する
-      if (fireAt > now || now - fireAt > 6 * 3_600_000) continue;
-      const key = `${task.id}:${task.due}:${task.dueTime ?? ''}`;
-      if (notified[key]) continue;
+    for (const { task, key } of collectDueReminders(tasks, now, notified)) {
       notified[key] = now;
       if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
         const n = new Notification(t('reminderTitle'), {

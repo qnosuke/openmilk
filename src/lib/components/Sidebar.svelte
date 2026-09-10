@@ -1,6 +1,5 @@
 <script module lang="ts">
-  /** タグなし絞り込みのセンチネル値（tagFilter に渡す） */
-  export const UNTAGGED = '__untagged__';
+  import { UNTAGGED } from '../utils/taskFilter';
 </script>
 
 <script lang="ts">

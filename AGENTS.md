@@ -23,6 +23,8 @@ UI は日本語 / English / 中文の 3 言語（`src/lib/i18n.svelte.ts` の辞
 - `src/lib/db/taskRepository.ts` — DB アクセスはこの層のみから行う。
   UI コンポーネントから Dexie を直接 import しない
 - `src/lib/utils/` — 日付計算・クイック追加パーサー（日/英/中対応）・ソート（いずれもテストあり）
+- `src/lib/utils/taskFilter.ts` / `reminders.ts` — 表示フィルタ・集計とリマインダー発火判定
+  （純粋関数、テストあり。UI 側の副作用は App.svelte に置く）
 - `src/lib/components/` — UI 部品。表示文字列は `t()` 経由で辞書から取得する
 - `src/lib/i18n.svelte.ts` — UI 多言語辞書。キーを追加するときは 3 言語すべてに足す
 
